@@ -77,6 +77,13 @@ android {
         buildConfig = true
     }
 
+    // F-Droid: no Google-encrypted dependency metadata block in the APK
+    // (needed for reproducible, upstream-signed F-Droid builds).
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
