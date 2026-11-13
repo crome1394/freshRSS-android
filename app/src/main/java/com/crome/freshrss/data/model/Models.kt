@@ -117,6 +117,8 @@ data class StatusResult(
     val titles: Map<String, Int> = emptyMap(),
     /** label → unread count */
     val labels: Map<String, Int> = emptyMap(),
+    /** feed title → site icon URL kept by FreshRSS */
+    val feedIcons: Map<String, String> = emptyMap(),
     val source: String = "",
     val error: String? = null,
 )
@@ -126,6 +128,8 @@ data class StatusResult(
 data class FeedRef(
     val id: Long,
     val title: String,
+    /** Site icon from the FreshRSS server ("" = letter badge). */
+    val iconUrl: String = "",
 )
 
 /**

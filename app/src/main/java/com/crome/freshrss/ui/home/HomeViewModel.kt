@@ -202,6 +202,7 @@ data class HomeUiState(
                 rows += ListRow.Header(
                     category = cat,
                     feedId = feed.id,
+                    iconUrl = feed.iconUrl,
                     unread = loadedUnread,
                     shown = list.size,
                     collapsed = isCollapsed,
@@ -273,6 +274,7 @@ sealed class ListRow {
     data class Header(
         val category: String,
         val feedId: Long,
+        val iconUrl: String = "",
         val unread: Int,
         val shown: Int,
         val collapsed: Boolean,
@@ -696,7 +698,9 @@ class HomeViewModel(
                         }
                     }
                 }
-                val knownList = known.values.sortedBy { it.title.lowercase() }
+                val knownList = known.values
+                    .map { f -> f.copy(iconUrl = f.iconUrl.ifBlank { status.feedIcons[f.title].orEmpty() }) }
+                    .sortedBy { it.title.lowercase() }
                 val allCats = knownList.map { it.title }.filter { it.isNotBlank() }.toSet()
                 val collapsed = if (ReaderDefaults.autoCollapseOnLoad) {
                     allCats.associateWith { true }

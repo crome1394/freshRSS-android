@@ -79,6 +79,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import com.crome.freshrss.util.Tailscale
+import androidx.compose.foundation.shape.RoundedCornerShape
+import coil.compose.AsyncImage
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crome.freshrss.BuildConfig
 import com.crome.freshrss.data.model.Article
@@ -720,12 +722,14 @@ private fun FeedHeaderRow(
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
+        FeedIcon(title = row.category, iconUrl = row.iconUrl)
+        Spacer(Modifier.width(10.dp))
         Text(
             text = row.category,
             modifier = Modifier.weight(1f),
             fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
@@ -957,5 +961,34 @@ private fun TailscaleButton(onConnected: () -> Unit) {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
         )
+    }
+}
+
+/** Site icon from the FreshRSS server, or a letter badge when there is none. */
+@Composable
+private fun FeedIcon(title: String, iconUrl: String) {
+    var failed by remember(iconUrl) { mutableStateOf(false) }
+    val mod = Modifier
+        .size(22.dp)
+        .clip(RoundedCornerShape(5.dp))
+    if (iconUrl.isNotBlank() && !failed) {
+        AsyncImage(
+            model = iconUrl,
+            contentDescription = null,
+            onError = { failed = true },
+            modifier = mod,
+        )
+    } else {
+        Box(
+            mod.background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = title.trim().firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "•",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
     }
 }

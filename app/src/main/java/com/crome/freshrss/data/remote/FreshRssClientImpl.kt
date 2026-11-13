@@ -12,6 +12,7 @@ import com.crome.freshrss.data.secure.AuthTokenStore
 import com.crome.freshrss.util.FeverAuth
 import com.crome.freshrss.util.HtmlUtils
 import com.crome.freshrss.util.MediaUtils
+import com.crome.freshrss.util.ServerUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -129,12 +130,15 @@ class FreshRssClientImpl(
         }
 
         val titles = mutableMapOf<String, Int>()
+        val icons = mutableMapOf<String, String>()
         val subsArr = subs.optJSONArray("subscriptions") ?: JSONArray()
         for (i in 0 until subsArr.length()) {
             val s = subsArr.getJSONObject(i)
             val sid = s.optString("id")
             val title = s.optString("title").ifBlank { sid }
             titles[title] = byStream[sid] ?: 0
+            val icon = ServerUrl.iconUrl(s.optString("iconUrl"), base)
+            if (icon.isNotBlank()) icons[title] = icon
         }
 
         val n = counts.optInt("max", 0).takeIf { it > 0 }
@@ -150,6 +154,7 @@ class FreshRssClientImpl(
             feeds = feeds,
             titles = titles,
             labels = labels,
+            feedIcons = icons,
             source = "greader",
         )
     }
@@ -260,7 +265,11 @@ class FreshRssClientImpl(
             val fid = Regex("""feed/(\d+)$""").find(stream)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
             val title = sub.optString("title").ifBlank { stream }
             if (title.isNotBlank()) {
-                feedRefs += com.crome.freshrss.data.model.FeedRef(id = fid, title = title)
+                feedRefs += com.crome.freshrss.data.model.FeedRef(
+                    id = fid,
+                    title = title,
+                    iconUrl = ServerUrl.iconUrl(sub.optString("iconUrl"), base),
+                )
             }
         }
 

@@ -66,4 +66,18 @@ object ServerUrl {
         if (!t.contains("://")) return false
         return t.startsWith("http://", ignoreCase = true)
     }
+
+    /**
+     * The site icon FreshRSS keeps for a feed, as a full http(s) URL, or "".
+     * A path ("/f.php?h=…") is resolved against the server's origin.
+     */
+    fun iconUrl(raw: String?, baseUrl: String): String {
+        val url = raw?.trim().orEmpty()
+        if (Regex("^https?://[^\\s\"'<>]+$", RegexOption.IGNORE_CASE).matches(url)) return url
+        if (Regex("^/[^\\s\"'<>]*$").matches(url)) {
+            val origin = Regex("^https?://[^/]+", RegexOption.IGNORE_CASE).find(baseUrl.trim())
+            return origin?.let { it.value + url }.orEmpty()
+        }
+        return ""
+    }
 }

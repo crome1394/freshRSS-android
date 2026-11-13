@@ -47,4 +47,18 @@ class ServerUrlTest {
         val r = ServerUrl.normalize("https://example.com/freshrss/", allowCleartext = false)
         assertEquals("https://example.com/freshrss", r.normalized)
     }
+
+    @Test
+    fun iconUrl_resolvesPathsAgainstServerOrigin() {
+        org.junit.Assert.assertEquals(
+            "https://rss.example.com/f.php?h=abc",
+            ServerUrl.iconUrl("/f.php?h=abc", "https://rss.example.com/freshrss"),
+        )
+        org.junit.Assert.assertEquals(
+            "http://10.0.0.5/f.php?h=1",
+            ServerUrl.iconUrl("http://10.0.0.5/f.php?h=1", "https://other"),
+        )
+        org.junit.Assert.assertEquals("", ServerUrl.iconUrl("javascript:x", "https://rss.example.com"))
+        org.junit.Assert.assertEquals("", ServerUrl.iconUrl("", "https://rss.example.com"))
+    }
 }
