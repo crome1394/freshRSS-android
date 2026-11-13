@@ -4,6 +4,19 @@ import android.content.Context
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -190,6 +203,20 @@ fun ArticleContent(
 
         Spacer(Modifier.height(20.dp))
 
+        if (article.leadImage.isNotBlank()) {
+            LeadPicture(
+                imageUrl = article.leadImage,
+                isMedia = article.isVideo || article.isAudio,
+                onClick = {
+                    if (article.isVideo || article.isAudio) {
+                        SafeUrls.openWithChooser(context, playUrl, title = "Open with")
+                    } else {
+                        SafeUrls.openInBrowser(context, browserUrl)
+                    }
+                },
+            )
+        }
+
         ArticleBody(article = article)
     }
 }
@@ -272,4 +299,50 @@ private fun ArticleBody(article: Article) {
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurface,
     )
+}
+
+/**
+ * The article's lead picture (YouTube still frame or first image). Hidden
+ * until it loads, and hidden for good if it fails. Tap: play or open.
+ */
+@Composable
+private fun LeadPicture(imageUrl: String, isMedia: Boolean, onClick: () -> Unit) {
+    var failed by remember(imageUrl) { mutableStateOf(false) }
+    var loaded by remember(imageUrl) { mutableStateOf(false) }
+    if (failed || !SafeUrls.isSafeHttpUrl(imageUrl)) return
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = if (isMedia) "Play" else "Open article",
+            contentScale = ContentScale.FillWidth,
+            onSuccess = { loaded = true },
+            onError = { failed = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 360.dp),
+        )
+        if (isMedia && loaded) {
+            Surface(
+                shape = CircleShape,
+                color = Color.Black.copy(alpha = 0.55f),
+                modifier = Modifier.size(64.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp),
+                    )
+                }
+            }
+        }
+    }
 }
