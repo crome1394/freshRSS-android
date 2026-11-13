@@ -36,4 +36,15 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        application.freshRssApp.tailscale.onAppForeground()
+    }
+
+    override fun onStop() {
+        // Not on rotation: only when the app really leaves the screen.
+        if (!isChangingConfigurations) application.freshRssApp.tailscale.onAppBackground()
+        super.onStop()
+    }
 }

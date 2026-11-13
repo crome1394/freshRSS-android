@@ -1,5 +1,6 @@
 package com.crome.freshrss.util
 
+import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
@@ -113,6 +114,20 @@ object Tailscale {
             false
         }
     }
+
+    /**
+     * A PendingIntent that sends DISCONNECT_VPN straight to Tailscale's
+     * receiver. Used by an alarm, so it fires even if this app was killed.
+     */
+    fun disconnectPendingIntent(context: Context): PendingIntent =
+        PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent(ACTION_DISCONNECT)
+                .setComponent(ComponentName(PACKAGE, RECEIVER))
+                .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 
     /** Open the Tailscale app (long-press on the key button). */
     fun open(context: Context): Boolean {

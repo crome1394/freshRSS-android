@@ -84,12 +84,13 @@ first to Tailscale's `AutomationActivity` (newer versions, wakes a stopped app),
 then to `IPNReceiver` as a broadcast (older versions). A `ConnectivityManager`
 callback on VPN transport drives the icon.
 
-`AutoTailscale` (one per app, in `data/remote`) wraps every server call from the list and the Settings test. On mobile data (no
-Wi-Fi/Ethernet) with the VPN down and the setting on, it connects Tailscale,
-waits up to 15 s for a VPN network plus 1 s for routes and DNS, runs the call,
-and when no call has used the server for 30 s, disconnects (only if it
-connected). A counter keeps parallel calls from disconnecting each other. The manifest declares
-`<queries><package android:name="com.tailscale.ipn"/>` so the app can see Tailscale.
+`AutoTailscale` (one per app, in `data/remote`) wraps every server call from the list and the Settings test.
+On mobile data (no Wi-Fi/Ethernet) with the VPN down and the setting on, it connects Tailscale,
+waits up to 15 s for a VPN network plus 1 s for routes and DNS, then runs the call. It only
+disconnects a connection it made: 5 s after the last call, at once when `MainActivity.onStop`
+reports the app left the screen, or, if the process dies first, from an inexact `AlarmManager`
+alarm (60 s) whose PendingIntent sends `DISCONNECT_VPN` straight to Tailscale's receiver.
+A counter keeps parallel calls from disconnecting each other.
 
 ## Tests
 

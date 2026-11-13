@@ -377,7 +377,7 @@ private fun TailscaleSettings(state: SettingsUiState, vm: SettingsViewModel) {
     LayoutSwitchRow(
         title = "Use Tailscale on mobile data",
         subtitle = "Off Wi-Fi, connect Tailscale to refresh or mark articles, then disconnect " +
-            "after 30 seconds. Leaves a connection you made yourself alone.",
+            "right after, or when you leave the app. Leaves a connection you made yourself alone.",
         checked = state.autoTailscale,
         onCheckedChange = vm::updateAutoTailscale,
     )

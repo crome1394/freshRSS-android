@@ -17,7 +17,7 @@ Improved:
 - **Tailscale key toggles the VPN** (connect / disconnect) instead of only opening Tailscale. The icon shows the state, long-press opens the app, and the list reloads after connecting
 - **New look**, modeled on BlurtText: feeds and articles as rounded cards on a canvas, a search pill at the top, and a footer with the unread count and actions
 - **Settings sheet**: opens from the bottom, resizes (half ↔ full), with swipeable Server / Reading / Look / Tailscale tabs. "Title bar at bottom" is gone (actions live in the footer)
-- **Tailscale on mobile data**: off Wi-Fi, refresh connects Tailscale, updates, and disconnects after 30 s idle (only if the app connected it)
+- **Tailscale on mobile data**: off Wi-Fi, refresh connects Tailscale, updates, and disconnects right after (5 s idle, at once when you leave the app, with an alarm as a backstop if Android kills it); a connection you made yourself is left alone
 - **New app icon** with a themed (monochrome) layer
 - **Color themes**: from the quickshell bar, Liquid amber, Liquid glass, Liquid ice, Ink, Solid dark, and Deep ocean (glass becomes an accent glow behind translucent cards); plus Tokyo Night, Catppuccin, Nord, Gruvbox, Rosé Pine, Solarized, and Wallpaper (Material You). Each has light and dark versions
 - Settings **Test** result is bright green when OK, bright red on failure, and Test connects Tailscale on mobile data too

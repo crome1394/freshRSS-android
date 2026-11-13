@@ -49,8 +49,10 @@ The list reloads by itself once Tailscale connects.
 ## Tailscale on mobile data
 
 With **Settings → Tailscale → Use Tailscale on mobile data** on (default), refreshing or marking
-articles off Wi-Fi connects Tailscale first, waits for it (up to 15 s), and disconnects again
-after 30 seconds with no server calls. If you connected Tailscale yourself, it is left alone.
+articles off Wi-Fi connects Tailscale first, waits for it (up to 15 s), and disconnects about
+5 seconds after the last server call, or at once when you switch to another app. If Android
+closes the app first, a system alarm still disconnects Tailscale within a minute or two.
+If you connected Tailscale yourself, it is left alone.
 
 ## Settings
 
