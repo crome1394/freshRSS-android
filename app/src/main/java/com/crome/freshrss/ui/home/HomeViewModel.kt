@@ -22,6 +22,9 @@ import com.crome.freshrss.data.remote.PageResult
 import com.crome.freshrss.util.ServerUrl
 import com.crome.freshrss.widget.FreshRssWidgetUpdater
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
+import com.crome.freshrss.util.Tailscale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -81,6 +84,8 @@ data class HomeUiState(
     val webPageFeeds: Set<String> = emptySet(),
     /** Articles the user switched to (or away from) the web page view this session. */
     val webPageToggled: Map<String, Boolean> = emptyMap(),
+    /** Waiting for Tailscale to come up before a refresh on mobile data. */
+    val tailscaleConnecting: Boolean = false,
     /** Web page view per article id; kept only while the app runs. */
     val pages: Map<String, PageState> = emptyMap(),
 ) {
@@ -427,6 +432,59 @@ class HomeViewModel(
     private val offline = OfflineCache(application.applicationContext)
     private val pageFetcher = PageFetcher()
 
+    // ── Tailscale on mobile data ────────────────────────────────────────
+    // On mobile data (setting on, Tailscale installed, VPN down) server calls
+    // connect Tailscale first. When the last call finishes and nothing else
+    // needs the server for TAILSCALE_LINGER_MS, we disconnect again, but only
+    // if we were the ones who connected it.
+    private var tailscaleUsers = 0
+    private var tailscaleOurs = false
+    private var tailscaleDisconnect: Job? = null
+
+    private suspend fun <T> viaTailscale(block: suspend () -> T): T {
+        val ctx = getApplication<Application>()
+        tailscaleDisconnect?.cancel()
+        tailscaleUsers++
+        try {
+            if (!Tailscale.isVpnActive(ctx) &&
+                settings.autoTailscale.first() &&
+                Tailscale.isInstalled(ctx) &&
+                Tailscale.isOnMobileData(ctx) &&
+                Tailscale.setConnected(ctx, connect = true)
+            ) {
+                tailscaleOurs = true
+                _state.update { it.copy(tailscaleConnecting = true) }
+                try {
+                    withTimeoutOrNull(TAILSCALE_CONNECT_TIMEOUT_MS) {
+                        Tailscale.vpnActiveFlow(ctx).first { it }
+                    }
+                    // Give MagicDNS and routes a moment after the interface appears.
+                    delay(TAILSCALE_SETTLE_MS)
+                } finally {
+                    _state.update { it.copy(tailscaleConnecting = false) }
+                }
+            }
+            return block()
+        } finally {
+            tailscaleUsers--
+            if (tailscaleUsers == 0 && tailscaleOurs) {
+                tailscaleDisconnect = viewModelScope.launch {
+                    delay(TAILSCALE_LINGER_MS)
+                    if (tailscaleUsers == 0 && tailscaleOurs) {
+                        Tailscale.setConnected(ctx, connect = false)
+                        tailscaleOurs = false
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        // Leaving the app: don't keep a VPN we started up.
+        if (tailscaleOurs) Tailscale.setConnected(getApplication(), connect = false)
+        super.onCleared()
+    }
+
     /** One page fetch at a time: a new one cancels the last. */
     private var pageJob: Job? = null
 
@@ -653,14 +711,15 @@ class HomeViewModel(
             }
 
             try {
-                val status = client.status()
-                if (!isActive) return@launch
-                val items = client.items(
-                    limit = itemLimit,
-                    scope = scope,
-                    perFeed = perFeed,
-                    historyDays = historyDays,
-                )
+                val (status, items) = viaTailscale {
+                    val st = client.status()
+                    st to client.items(
+                        limit = itemLimit,
+                        scope = scope,
+                        perFeed = perFeed,
+                        historyDays = historyDays,
+                    )
+                }
                 if (!isActive) return@launch
 
                 if (!items.ok) {
@@ -1040,7 +1099,7 @@ class HomeViewModel(
                 persistCurrentCache()
                 return@launch
             }
-            val r = client.markItem(id, read = read)
+            val r = viaTailscale { client.markItem(id, read = read) }
             if (!r.ok) {
                 // Revert
                 _state.update { s ->
@@ -1091,7 +1150,7 @@ class HomeViewModel(
         viewModelScope.launch {
             val cur = articleById(id) ?: return@launch
             val wantSaved = !cur.isSaved
-            val r = client.starItem(id, saved = wantSaved)
+            val r = viaTailscale { client.starItem(id, saved = wantSaved) }
             if (r.ok) {
                 _state.update { s ->
                     s.copy(
@@ -1110,7 +1169,7 @@ class HomeViewModel(
     fun markFeedRead(feedId: Long) {
         if (feedId <= 0) return
         viewModelScope.launch {
-            val r = client.markFeed(feedId, read = true)
+            val r = viaTailscale { client.markFeed(feedId, read = true) }
             if (r.ok) refresh() else _state.update { it.copy(error = r.error) }
         }
     }
@@ -1138,7 +1197,7 @@ class HomeViewModel(
     fun markCategoryUnread(category: String, feedId: Long) {
         viewModelScope.launch {
             if (feedId > 0 && _state.value.writable) {
-                val r = client.markFeed(feedId, read = false)
+                val r = viaTailscale { client.markFeed(feedId, read = false) }
                 if (r.ok) {
                     _state.update { it.copy(statusLine = "Marked “$category” unread") }
                     refresh()
@@ -1156,7 +1215,7 @@ class HomeViewModel(
     fun markCategoryRead(category: String, feedId: Long) {
         viewModelScope.launch {
             if (feedId > 0 && _state.value.writable) {
-                val r = client.markFeed(feedId, read = true)
+                val r = viaTailscale { client.markFeed(feedId, read = true) }
                 if (r.ok) {
                     // Optimistically clear local unread in this category for the widget/UI,
                     // then full refresh for server truth.
@@ -1188,7 +1247,7 @@ class HomeViewModel(
             }
             for (a in targets) {
                 if (_state.value.writable) {
-                    client.markItem(a.id, read = true)
+                    viaTailscale { client.markItem(a.id, read = true) }
                 }
             }
             _state.update { s ->
@@ -1208,6 +1267,10 @@ class HomeViewModel(
     companion object {
         /** Web pages kept in memory at once. */
         private const val PAGE_CACHE = 20
+        private const val TAILSCALE_CONNECT_TIMEOUT_MS = 15_000L
+        private const val TAILSCALE_SETTLE_MS = 1_000L
+        /** Idle time before an auto-connected Tailscale is disconnected. */
+        private const val TAILSCALE_LINGER_MS = 30_000L
 
         fun factory(
             application: Application,

@@ -72,6 +72,8 @@ class SettingsRepository(context: Context) {
         /** Appearance: system | light | dark */
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val THEME_PALETTE = stringPreferencesKey("theme_palette")
+        /** On mobile data, connect Tailscale for each refresh and disconnect after. */
+        val AUTO_TAILSCALE = booleanPreferencesKey("auto_tailscale_mobile")
     }
 
     companion object {
@@ -155,6 +157,17 @@ class SettingsRepository(context: Context) {
 
     val themeMode: Flow<AppThemeMode> = appContext.dataStore.data.map { prefs ->
         AppThemeMode.fromStorage(prefs[Keys.THEME_MODE])
+    }
+
+    /** Default true — only acts when Tailscale is installed and the phone is on mobile data. */
+    val autoTailscale: Flow<Boolean> = appContext.dataStore.data.map { prefs ->
+        prefs[Keys.AUTO_TAILSCALE] ?: true
+    }
+
+    suspend fun setAutoTailscale(value: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.AUTO_TAILSCALE] = value
+        }
     }
 
     val palette: Flow<AppPalette> = appContext.dataStore.data.map { prefs ->

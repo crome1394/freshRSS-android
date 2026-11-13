@@ -44,6 +44,21 @@ object Tailscale {
         }
     }
 
+    /**
+     * True when the phone is online over mobile data and not Wi-Fi or Ethernet
+     * (checked before any VPN is up, so the active network is the real one).
+     */
+    fun isOnMobileData(context: Context): Boolean {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return false
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+        ) {
+            return false
+        }
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+    }
+
     /** Emits [isVpnActive] now and whenever a VPN network comes or goes. */
     fun vpnActiveFlow(context: Context): Flow<Boolean> = callbackFlow {
         val cm = context.getSystemService(ConnectivityManager::class.java)

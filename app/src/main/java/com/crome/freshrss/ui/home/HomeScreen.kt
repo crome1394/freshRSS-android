@@ -927,7 +927,9 @@ private fun HomeFooter(
                     maxLines = 1,
                 )
                 val caption = buildString {
-                    if (state.loading) {
+                    if (state.tailscaleConnecting) {
+                        append("Connecting Tailscale…")
+                    } else if (state.loading) {
                         append("Updating…")
                     } else if (state.lastUpdatedEpochMs > 0) {
                         append("Updated ${formatLastUpdated(state.lastUpdatedEpochMs)}")
