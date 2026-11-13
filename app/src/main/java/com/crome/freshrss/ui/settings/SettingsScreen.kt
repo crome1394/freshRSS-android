@@ -257,7 +257,7 @@ fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
                 LayoutSwitchRow(
                     title = "Show Tailscale button",
-                    subtitle = "Show the key icon in the title bar to open the Tailscale app",
+                    subtitle = "Key icon in the title bar: tap to connect or disconnect Tailscale, long-press to open the app",
                     checked = state.showTailscaleButton,
                     onCheckedChange = vm::updateShowTailscaleButton,
                 )

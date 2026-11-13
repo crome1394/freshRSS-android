@@ -24,8 +24,6 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import android.content.Context
-import android.content.Intent
 import android.widget.Toast
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Done
@@ -74,6 +72,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.VpnKeyOff
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import com.crome.freshrss.util.Tailscale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crome.freshrss.BuildConfig
 import com.crome.freshrss.data.model.Article
@@ -129,12 +134,9 @@ fun HomeScreen(
         }
     }
 
-    val context = LocalContext.current
     val actionButtons: @Composable () -> Unit = {
         if (state.showTailscaleButton) {
-            IconButton(onClick = { openTailscale(context) }) {
-                Icon(Icons.Default.VpnKey, contentDescription = "Open Tailscale")
-            }
+            TailscaleButton(onConnected = { vm.refresh() })
         }
         IconButton(onClick = { vm.refresh() }) {
             Icon(Icons.Default.Refresh, contentDescription = "Refresh")
@@ -898,14 +900,62 @@ private fun formatLastUpdated(epochMs: Long): String {
     return fmt.format(Date(epochMs))
 }
 
-private const val TAILSCALE_PACKAGE = "com.tailscale.ipn"
-
-private fun openTailscale(context: Context) {
-    val launch = context.packageManager.getLaunchIntentForPackage(TAILSCALE_PACKAGE)
-    if (launch != null) {
-        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(launch)
-    } else {
-        Toast.makeText(context, "Tailscale not installed", Toast.LENGTH_SHORT).show()
+/**
+ * Key button: tap connects or disconnects Tailscale, long-press opens the app.
+ * Bright key = VPN up, crossed-out key = down. Reloads the list once the VPN
+ * comes up after a tap, since the server is usually only reachable through it.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TailscaleButton(onConnected: () -> Unit) {
+    val context = LocalContext.current
+    val vpnFlow = remember { Tailscale.vpnActiveFlow(context.applicationContext) }
+    val vpnActive by vpnFlow.collectAsStateWithLifecycle(
+        initialValue = remember { Tailscale.isVpnActive(context) },
+    )
+    var waitingForConnect by remember { mutableStateOf(false) }
+    LaunchedEffect(vpnActive) {
+        if (vpnActive && waitingForConnect) {
+            waitingForConnect = false
+            onConnected()
+        }
+    }
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .combinedClickable(
+                onClickLabel = if (vpnActive) "Disconnect Tailscale" else "Connect Tailscale",
+                onLongClickLabel = "Open Tailscale",
+                onClick = {
+                    val connect = !vpnActive
+                    if (Tailscale.setConnected(context, connect)) {
+                        waitingForConnect = connect
+                        Toast.makeText(
+                            context,
+                            if (connect) "Connecting Tailscale…" else "Disconnecting Tailscale…",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    } else {
+                        Toast.makeText(context, "Tailscale not installed", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onLongClick = {
+                    if (!Tailscale.open(context)) {
+                        Toast.makeText(context, "Tailscale not installed", Toast.LENGTH_SHORT).show()
+                    }
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (vpnActive) Icons.Default.VpnKey else Icons.Default.VpnKeyOff,
+            contentDescription = if (vpnActive) "Tailscale connected" else "Tailscale disconnected",
+            tint = if (vpnActive) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
     }
 }
