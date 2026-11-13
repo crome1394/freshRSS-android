@@ -346,7 +346,8 @@ private fun ArticleBody(article: Article, html: String) {
     }
     val annotated = remember(html, linkColor) {
         AnnotatedString.fromHtml(
-            htmlString = html,
+            // A blank line between paragraphs (fromHtml only breaks the line).
+            htmlString = html.replace(Regex("(?i)</p>"), "</p><br>"),
             linkStyles = TextLinkStyles(
                 style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
             ),

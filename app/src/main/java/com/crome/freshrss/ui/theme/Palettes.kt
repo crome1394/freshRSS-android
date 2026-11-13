@@ -114,7 +114,7 @@ private val TokyoNightDark = Swatch(
 )
 private val TokyoNightLight = Swatch( // "Day"
     background = 0xFFE1E2E7, surface = 0xFFF2F3F7, surfaceVariant = 0xFFD5D6DB,
-    onSurface = 0xFF3760BF, muted = 0xFF4E5579, primary = 0xFF2E7DE9, onPrimary = 0xFFFFFFFF,
+    onSurface = 0xFF343B58, muted = 0xFF4E5579, primary = 0xFF2E7DE9, onPrimary = 0xFFFFFFFF,
     primaryContainer = 0xFFC8D7F5, onPrimaryContainer = 0xFF1F3A73, secondary = 0xFF9854F1,
     error = 0xFFC64343, outline = 0xFF8990B3,
 )

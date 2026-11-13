@@ -11,6 +11,23 @@ echo "sdk.dir=$HOME/Android/Sdk" > local.properties
 ./gradlew :app:testDebugUnitTest      # unit tests
 ```
 
+## Testing on emulators
+
+`tools/mock-freshrss.py` is a small fake FreshRSS (made-up feeds, any login) so emulators
+can be tested without a real server:
+
+```bash
+python3 -I tools/mock-freshrss.py              # listens on 127.0.0.1:8089
+~/Android/Sdk/emulator/emulator -avd Tablet_API35 &
+```
+
+In the app: Server URL `http://10.0.2.2:8089` (the emulator's name for this machine), any
+user and password, and turn on **Allow insecure HTTP**.
+
+Useful virtual devices (`avdmanager create avd`): `pixel_tablet` and `pixel_fold` on
+Android 15, and `pixel_4` on Android 9 (API 28) and 8.0 (API 26), the oldest the app supports.
+`adb emu fold` / `adb emu unfold` switch the Fold's screens.
+
 ## Release signing
 
 `app/build.gradle.kts` signs the release build when these are set, either in

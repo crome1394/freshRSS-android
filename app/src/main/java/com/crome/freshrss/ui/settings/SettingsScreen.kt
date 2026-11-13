@@ -48,6 +48,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import com.crome.freshrss.ui.home.MAX_CONTENT_WIDTH_DP
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -88,6 +94,13 @@ fun SettingsSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val pager = rememberPagerState { SettingsTab.entries.size }
     val scope = rememberCoroutineScope()
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Open without a focused field or a keyboard left over from the list's search.
+    LaunchedEffect(Unit) {
+        focus.clearFocus()
+        keyboard?.hide()
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -199,7 +212,9 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(16.dp)
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .widthIn(max = MAX_CONTENT_WIDTH_DP.dp),
         ) {
             Text("Welcome", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
@@ -398,6 +413,8 @@ private fun SaveBar(
     saveLabel: String? = null,
     onSaved: (() -> Unit)? = null,
 ) {
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     Column(modifier.fillMaxWidth()) {
         state.testResult?.let {
             Text(
@@ -418,7 +435,11 @@ private fun SaveBar(
             }
             Spacer(Modifier.width(12.dp))
             Button(
-                onClick = { vm.save(onSuccess = onSaved) },
+                onClick = {
+                    focus.clearFocus()
+                    keyboard?.hide()
+                    vm.save(onSuccess = onSaved)
+                },
                 modifier = Modifier.weight(1f),
             ) {
                 Text(saveLabel ?: if (state.saved) "Saved" else "Save", maxLines = 1)

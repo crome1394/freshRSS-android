@@ -81,6 +81,10 @@ import androidx.compose.ui.draw.clip
 import com.crome.freshrss.util.Tailscale
 import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.AsyncImage
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -136,6 +140,10 @@ fun HomeScreen(
     dualPane: Boolean = false,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    // Two-pane: Back closes the open article before leaving the app.
+    BackHandler(enabled = dualPane && state.selectedArticleId != null) {
+        vm.clearArticleSelection()
+    }
     val listState = rememberLazyListState()
     val listScope = rememberCoroutineScope()
 
@@ -349,20 +357,24 @@ fun HomeScreen(
         }
 
         if (dualPane) {
-            Row(
+            BoxWithConstraints(
                 Modifier
                     .fillMaxSize()
                     .padding(padding),
             ) {
+            // List pane: 38% of the width, but 360–480 dp so the chips fit in
+            // one row on a Fold and cards don't sprawl on a big tablet.
+            val listWidth = (maxWidth * 0.38f).coerceIn(360.dp, 480.dp)
+            Row(Modifier.fillMaxSize()) {
                 listColumn(
                     Modifier
-                        .weight(0.38f)
+                        .width(listWidth)
                         .fillMaxHeight(),
                 )
                 VerticalDivider(Modifier.fillMaxHeight())
                 Box(
                     Modifier
-                        .weight(0.62f)
+                        .weight(1f)
                         .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.surface),
                 ) {
@@ -386,6 +398,7 @@ fun HomeScreen(
                         ArticleEmptyPane()
                     }
                 }
+            }
             }
         } else {
             // Portrait tablets, Fold cover screens, DeX windows: keep cards and
@@ -564,8 +577,11 @@ private fun ScopeChips(
 ) {
     val order = listOf(ReadScope.UNREAD, ReadScope.ALL, ReadScope.READ, ReadScope.SAVED)
     val chipIconMod = Modifier.height(18.dp)
-    FlowRow(
-        modifier = modifier.fillMaxWidth(),
+    // One line that scrolls sideways when it doesn't fit (Fold list pane, big fonts).
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         for (scope in order) {
@@ -818,7 +834,8 @@ private fun ArticleRow(
                 }
                 if (article.summary.isNotBlank()) {
                     Text(
-                        text = article.summary,
+                        // Paragraph breaks in the preview would strand a lone "…".
+                        text = article.summary.replace(Regex("\\s+"), " "),
                         style = MaterialTheme.typography.bodyMedium,
                         color = scheme.onSurfaceVariant,
                         maxLines = 2,
