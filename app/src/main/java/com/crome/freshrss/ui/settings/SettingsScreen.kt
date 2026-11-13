@@ -37,6 +37,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.os.Build
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import com.crome.freshrss.ui.theme.AppPalette
+import com.crome.freshrss.ui.theme.scheme
 import com.crome.freshrss.ui.theme.AppThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -201,8 +213,7 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    "Light is easier in bright rooms; Dark matches the Tokyo Night look. " +
-                        "System follows your phone setting.",
+                    "Light or dark. System follows your phone setting.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -215,6 +226,28 @@ fun SettingsScreen(
                             selected = state.themeMode == mode,
                             onClick = { vm.updateThemeMode(mode) },
                             label = { Text(mode.label) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Text("Colors", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "Each has a light and a dark version. Wallpaper uses your phone's " +
+                        "colors (Android 12+).",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    for (p in AppPalette.entries) {
+                        if (p == AppPalette.DYNAMIC && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) continue
+                        FilterChip(
+                            selected = state.palette == p,
+                            onClick = { vm.updatePalette(p) },
+                            label = { Text(p.label) },
+                            leadingIcon = { PaletteSwatch(p) },
                         )
                     }
                 }
@@ -326,5 +359,35 @@ private fun LayoutSwitchRow(
             )
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+/** Two dots, light and dark, each the palette's accent on its background. */
+@Composable
+private fun PaletteSwatch(palette: AppPalette) {
+    val context = LocalContext.current
+    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        for (dark in listOf(false, true)) {
+            val scheme = if (palette == AppPalette.DYNAMIC && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            } else {
+                palette.scheme(dark)
+            }
+            Box(
+                Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(scheme.background)
+                    .border(1.dp, scheme.outline, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(scheme.primary),
+                )
+            }
+        }
     }
 }

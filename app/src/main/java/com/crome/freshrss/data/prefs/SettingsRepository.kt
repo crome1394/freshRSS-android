@@ -13,6 +13,7 @@ import com.crome.freshrss.data.model.FreshRssConfig
 import com.crome.freshrss.data.model.ReadScope
 import com.crome.freshrss.data.model.ReaderDefaults
 import com.crome.freshrss.data.secure.SecureSecrets
+import com.crome.freshrss.ui.theme.AppPalette
 import com.crome.freshrss.ui.theme.AppThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -70,6 +71,7 @@ class SettingsRepository(context: Context) {
         val SHOW_TAILSCALE_BUTTON = booleanPreferencesKey("show_tailscale_button")
         /** Appearance: system | light | dark */
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val THEME_PALETTE = stringPreferencesKey("theme_palette")
     }
 
     companion object {
@@ -153,6 +155,16 @@ class SettingsRepository(context: Context) {
 
     val themeMode: Flow<AppThemeMode> = appContext.dataStore.data.map { prefs ->
         AppThemeMode.fromStorage(prefs[Keys.THEME_MODE])
+    }
+
+    val palette: Flow<AppPalette> = appContext.dataStore.data.map { prefs ->
+        AppPalette.fromStorage(prefs[Keys.THEME_PALETTE])
+    }
+
+    suspend fun setPalette(palette: AppPalette) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.THEME_PALETTE] = palette.storageValue
+        }
     }
 
     suspend fun saveConfig(config: FreshRssConfig) {

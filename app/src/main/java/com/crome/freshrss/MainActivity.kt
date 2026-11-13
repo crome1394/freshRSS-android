@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crome.freshrss.ui.FreshRssNav
+import com.crome.freshrss.ui.theme.AppPalette
 import com.crome.freshrss.ui.theme.AppThemeMode
 import com.crome.freshrss.ui.theme.FreshRssTheme
 
@@ -22,7 +23,10 @@ class MainActivity : ComponentActivity() {
             val themeMode by app.settings.themeMode.collectAsStateWithLifecycle(
                 initialValue = AppThemeMode.SYSTEM,
             )
-            FreshRssTheme(themeMode = themeMode) {
+            val palette by app.settings.palette.collectAsStateWithLifecycle(
+                initialValue = AppPalette.TOKYO_NIGHT,
+            )
+            FreshRssTheme(themeMode = themeMode, palette = palette) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     FreshRssNav(
                         client = app.client,

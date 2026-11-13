@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.crome.freshrss.data.model.FreshRssConfig
 import com.crome.freshrss.data.prefs.SettingsRepository
 import com.crome.freshrss.data.remote.FreshRssClient
+import com.crome.freshrss.ui.theme.AppPalette
 import com.crome.freshrss.ui.theme.AppThemeMode
 import com.crome.freshrss.util.ServerUrl
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,7 @@ data class SettingsUiState(
     val showTailscaleButton: Boolean = true,
     /** System / Light / Dark */
     val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    val palette: AppPalette = AppPalette.TOKYO_NIGHT,
     val testResult: String? = null,
     val testing: Boolean = false,
     val saved: Boolean = false,
@@ -67,6 +69,7 @@ class SettingsViewModel(
                     allowCleartextHttp = settings.allowCleartextHttp.first(),
                     showTailscaleButton = settings.showTailscaleButton.first(),
                     themeMode = settings.themeMode.first(),
+                    palette = settings.palette.first(),
                 )
             }
         }
@@ -109,6 +112,12 @@ class SettingsViewModel(
         viewModelScope.launch {
             settings.setThemeMode(mode)
         }
+    }
+
+    /** Applies immediately (like Light / Dark). */
+    fun updatePalette(palette: AppPalette) {
+        _state.update { it.copy(palette = palette) }
+        viewModelScope.launch { settings.setPalette(palette) }
     }
 
     /**
