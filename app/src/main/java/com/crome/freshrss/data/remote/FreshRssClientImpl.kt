@@ -399,9 +399,9 @@ class FreshRssClientImpl(
                 item.optJSONObject("summary")?.let { s -> html = s.optString("content") }
             }
             val media = MediaUtils.extractMedia(html, link, ftitle, site)
-            var plain = HtmlUtils.stripHtml(html)
-            html = HtmlUtils.truncateHtml(html)
-            plain = HtmlUtils.truncateText(plain)
+            val lead = HtmlUtils.leadImage(html, media.mediaUrl, link)
+            html = HtmlUtils.readerHtml(html, lead)
+            val plain = HtmlUtils.truncateText(HtmlUtils.stripHtml(html))
 
             // Section by FreshRSS subscription title ONLY.
             // GReader also attaches publisher tags (e.g. "U.S. News") and labels
@@ -440,6 +440,7 @@ class FreshRssClientImpl(
                 isVideo = media.isVideo,
                 isAudio = media.isAudio,
                 mediaUrl = media.mediaUrl,
+                leadImage = lead,
                 createdOnTime = created,
             )
         }
@@ -600,9 +601,9 @@ class FreshRssClientImpl(
             fmeta?.optString("title"),
             fmeta?.optString("site_url"),
         )
-        var plain = HtmlUtils.stripHtml(html)
-        html = HtmlUtils.truncateHtml(html)
-        plain = HtmlUtils.truncateText(plain)
+        val lead = HtmlUtils.leadImage(html, media.mediaUrl, url)
+        html = HtmlUtils.readerHtml(html, lead)
+        val plain = HtmlUtils.truncateText(HtmlUtils.stripHtml(html))
         val gid = feedToGroup[fid]
         val gtitle = gid?.let { groupTitle[it] }.orEmpty()
         // Always FreshRSS feed title — never publisher/html categories.
@@ -626,6 +627,7 @@ class FreshRssClientImpl(
             isVideo = media.isVideo,
             isAudio = media.isAudio,
             mediaUrl = media.mediaUrl,
+            leadImage = lead,
             createdOnTime = jsonEpochSeconds(it, "created_on_time"),
         )
     }
@@ -867,7 +869,9 @@ class FreshRssClientImpl(
                         val html = contentEncoded.ifBlank { description }
                         val idStr = guid.ifBlank { link.ifBlank { title } }
                         val media = MediaUtils.extractMedia(html, link, category, null)
-                        val plain = HtmlUtils.stripHtml(html)
+                        val lead = HtmlUtils.leadImage(html, media.mediaUrl, link)
+                        val reader = HtmlUtils.readerHtml(html, lead)
+                        val plain = HtmlUtils.stripHtml(reader)
                         val epoch = parseRfc822(pubDate)
                         // Public RSS has no per-feed title — do NOT use item <category>
                         // (e.g. "U.S. News") as a FreshRSS feed name.
@@ -880,7 +884,8 @@ class FreshRssClientImpl(
                             title = title.ifBlank { "(no title)" },
                             author = author,
                             url = link,
-                            html = HtmlUtils.truncateHtml(html),
+                            html = reader,
+                            leadImage = lead,
                             text = HtmlUtils.truncateText(plain),
                             summary = HtmlUtils.summary(plain),
                             isRead = false,

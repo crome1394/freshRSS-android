@@ -1,7 +1,22 @@
 package com.crome.freshrss.ui.article
 
 import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
+import android.os.Build
+import android.widget.Toast
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.MarkEmailUnread
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.fromHtml
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,12 +76,14 @@ fun shareArticle(context: Context, title: String, url: String) {
  * Shared article body used by full-screen [ArticleScreen] (phone) and the
  * tablet dual-pane reading column.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ArticleContent(
     article: Article,
     writable: Boolean,
     onToggleStar: () -> Unit,
-    onMarkRead: () -> Unit,
+    /** Read ↔ unread. */
+    onToggleRead: () -> Unit,
     modifier: Modifier = Modifier,
     /** When true, show star/mark-read in a top action row (tablet pane). */
     showInlineActions: Boolean = false,
@@ -103,9 +120,7 @@ fun ArticleContent(
                             contentDescription = "Star",
                         )
                     }
-                    IconButton(onClick = onMarkRead) {
-                        Icon(Icons.Default.Done, contentDescription = "Mark read")
-                    }
+                    ReadToggleButton(isRead = article.isRead, onClick = onToggleRead)
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -134,7 +149,10 @@ fun ArticleContent(
 
         val browserUrl = article.url
         val playUrl = MediaUtils.playableUrl(article.mediaUrl, article.url)
-        Row(Modifier.fillMaxWidth()) {
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             FilledTonalButton(
                 onClick = { SafeUrls.openInBrowser(context, browserUrl) },
                 enabled = SafeUrls.isSafeHttpUrl(browserUrl),
@@ -142,7 +160,6 @@ fun ArticleContent(
                 Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
                 Text("  Browser", modifier = Modifier.padding(start = 4.dp))
             }
-            Spacer(Modifier.width(8.dp))
             FilledTonalButton(
                 onClick = { shareArticle(context, article.title, article.url) },
                 enabled = article.title.isNotBlank() || SafeUrls.isSafeHttpUrl(article.url),
@@ -150,8 +167,14 @@ fun ArticleContent(
                 Icon(Icons.Default.Share, contentDescription = null)
                 Text("  Share", modifier = Modifier.padding(start = 4.dp))
             }
+            FilledTonalButton(
+                onClick = { copyLink(context, browserUrl) },
+                enabled = SafeUrls.isSafeHttpUrl(browserUrl),
+            ) {
+                Icon(Icons.Default.ContentCopy, contentDescription = null)
+                Text("  Copy link", modifier = Modifier.padding(start = 4.dp))
+            }
             if (article.isVideo || article.isAudio) {
-                Spacer(Modifier.width(8.dp))
                 FilledTonalButton(
                     onClick = { SafeUrls.openWithChooser(context, playUrl, title = "Open with") },
                     enabled = SafeUrls.isSafeHttpUrl(playUrl),
@@ -167,11 +190,7 @@ fun ArticleContent(
 
         Spacer(Modifier.height(20.dp))
 
-        val body = article.text.ifBlank { article.summary }
-        Text(
-            body.ifBlank { "(no content — open in browser)" },
-            style = MaterialTheme.typography.bodyLarge,
-        )
+        ArticleBody(article = article)
     }
 }
 
@@ -196,4 +215,61 @@ fun ArticleEmptyPane(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/** Done icon marks read; on a read article the envelope marks it unread again. */
+@Composable
+fun ReadToggleButton(isRead: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        if (isRead) {
+            Icon(Icons.Default.MarkEmailUnread, contentDescription = "Mark unread")
+        } else {
+            Icon(Icons.Default.Done, contentDescription = "Mark read")
+        }
+    }
+}
+
+fun copyLink(context: Context, url: String) {
+    val safe = SafeUrls.normalizeHttpUrl(url) ?: return
+    val cm = context.getSystemService(ClipboardManager::class.java) ?: return
+    cm.setPrimaryClip(ClipData.newPlainText("Article link", safe))
+    // Android 13+ shows its own clipboard confirmation.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+    }
+}
+
+/**
+ * Article text from its cleaned HTML: paragraphs, headings, lists, and links
+ * (images are `[image]` links). Links open through [SafeUrls] (http/https only).
+ * Falls back to the plain text when there is no HTML.
+ */
+@Composable
+private fun ArticleBody(article: Article) {
+    val context = LocalContext.current
+    val linkColor = MaterialTheme.colorScheme.primary
+    val html = article.html
+    if (html.isBlank()) {
+        Text(
+            article.text.ifBlank { article.summary }.ifBlank { "(no content — open in browser)" },
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        return
+    }
+    val annotated = remember(html, linkColor) {
+        AnnotatedString.fromHtml(
+            htmlString = html,
+            linkStyles = TextLinkStyles(
+                style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+            ),
+            linkInteractionListener = { link ->
+                if (link is LinkAnnotation.Url) SafeUrls.openInBrowser(context, link.url)
+            },
+        )
+    }
+    Text(
+        annotated,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
 }

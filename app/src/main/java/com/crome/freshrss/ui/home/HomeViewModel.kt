@@ -122,7 +122,7 @@ data class HomeUiState(
                 }
                 if (q.isNotEmpty()) {
                     val blob = listOf(
-                        it.title, it.author, it.feedTitle, it.groupTitle, it.category, it.summary,
+                        it.title, it.author, it.feedTitle, it.groupTitle, it.category, it.text,
                     ).joinToString("\n").lowercase()
                     if (q !in blob) return@filter false
                 }
@@ -923,6 +923,11 @@ class HomeViewModel(
     fun markRead(id: String) = setReadState(id, read = true)
 
     fun markUnread(id: String) = setReadState(id, read = false)
+
+    fun toggleRead(id: String) {
+        val a = articleById(id) ?: return
+        setReadState(id, read = !a.isRead)
+    }
 
     private fun setReadState(id: String, read: Boolean) {
         viewModelScope.launch {

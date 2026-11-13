@@ -446,7 +446,7 @@ fun HomeScreen(
                             article = selected,
                             writable = state.writable,
                             onToggleStar = { vm.toggleStar(selected.id) },
-                            onMarkRead = { vm.markRead(selected.id) },
+                            onToggleRead = { vm.toggleRead(selected.id) },
                             showInlineActions = true,
                         )
                     } else {

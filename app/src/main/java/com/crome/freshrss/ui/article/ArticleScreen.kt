@@ -3,7 +3,6 @@ package com.crome.freshrss.ui.article
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -70,9 +69,10 @@ fun ArticleScreen(
                                     contentDescription = "Star",
                                 )
                             }
-                            IconButton(onClick = { vm.markRead(article.id) }) {
-                                Icon(Icons.Default.Done, contentDescription = "Mark read")
-                            }
+                            ReadToggleButton(
+                                isRead = article.isRead,
+                                onClick = { vm.toggleRead(article.id) },
+                            )
                         }
                     }
                 },
@@ -93,7 +93,7 @@ fun ArticleScreen(
             article = article,
             writable = state.writable,
             onToggleStar = { vm.toggleStar(article.id) },
-            onMarkRead = { vm.markRead(article.id) },
+            onToggleRead = { vm.toggleRead(article.id) },
             modifier = Modifier.padding(padding),
             showInlineActions = false,
         )

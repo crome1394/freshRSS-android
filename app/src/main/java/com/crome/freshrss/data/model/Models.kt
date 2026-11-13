@@ -87,6 +87,8 @@ data class Article(
     /** Direct audio file, podcast host, or HTML &lt;audio&gt; enclosure. */
     val isAudio: Boolean = false,
     val mediaUrl: String = "",
+    /** Lead picture: YouTube still frame or first image ("" = none). */
+    val leadImage: String = "",
     /** Unix epoch seconds */
     val createdOnTime: Long = 0,
     val pubDate: String = "",
@@ -165,9 +167,9 @@ object ReaderDefaults {
     const val pollIntervalMs: Long = 60_000L
     const val autoCollapseOnLoad: Boolean = true
 
-    /** Truncation limits from freshrss-api.sh (list payload). */
-    const val HTML_MAX = 6000
-    const val TEXT_MAX = 1200
+    /** Size caps: reader HTML (cleaned) and plain text (search + fallback body). */
+    const val HTML_MAX = 60_000
+    const val TEXT_MAX = 4000
     const val SUMMARY_MAX = 220
 
     /** UI steppers (same spirit as FreshRssPill.qml). */
