@@ -81,6 +81,7 @@ import androidx.compose.ui.draw.clip
 import com.crome.freshrss.util.Tailscale
 import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.AsyncImage
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crome.freshrss.BuildConfig
 import com.crome.freshrss.data.model.Article
@@ -361,16 +362,14 @@ fun HomeScreen(
                                     is ListRow.Header -> FeedHeaderRow(
                                         row = row,
                                         onClick = { vm.toggleCategory(row.category) },
-                                        onLongClick = {
-                                            vm.markCategoryRead(row.category, row.feedId)
-                                        },
-                                        onMarkRead = {
-                                            vm.markCategoryRead(row.category, row.feedId)
+                                        onToggleRead = {
+                                            vm.toggleFeedRead(row.category, row.feedId)
                                         },
                                     )
                                     is ListRow.DateHeader -> DateHeaderRow(
                                         row = row,
                                         onClick = { vm.toggleDateGroup(row.category, row.dateKey) },
+                                        onLongClick = { vm.toggleDayRead(row.category, row.dateKey) },
                                     )
                                     is ListRow.Item -> SwipeableArticleRow(
                                         article = row.article,
@@ -708,8 +707,8 @@ private fun DateFilterChips(
 private fun FeedHeaderRow(
     row: ListRow.Header,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onMarkRead: () -> Unit,
+    /** All read ↔ all unread (also on long-press). */
+    onToggleRead: () -> Unit,
 ) {
     Row(
         Modifier
@@ -717,9 +716,9 @@ private fun FeedHeaderRow(
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick,
+                onLongClick = onToggleRead,
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -748,29 +747,33 @@ private fun FeedHeaderRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelMedium,
         )
-        if (row.feedId > 0) {
-            Text(
-                text = "  ✓",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .clickable(onClick = onMarkRead)
-                    .padding(start = 8.dp),
-                style = MaterialTheme.typography.labelLarge,
-            )
+        IconButton(onClick = onToggleRead, modifier = Modifier.size(40.dp)) {
+            if (row.unread > 0) {
+                Icon(Icons.Default.DoneAll, contentDescription = "Mark feed read")
+            } else {
+                Icon(
+                    Icons.Default.MarkEmailUnread,
+                    contentDescription = "Mark feed unread",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DateHeaderRow(
     row: ListRow.DateHeader,
     onClick: () -> Unit,
+    /** Long-press: the day's articles all read ↔ all unread. */
+    onLongClick: () -> Unit,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(start = 28.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

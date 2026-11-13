@@ -1110,6 +1110,43 @@ class HomeViewModel(
         }
     }
 
+    /**
+     * Feed: all read ↔ all unread (the quickshell Space key on a feed).
+     * Any unread loaded → mark the feed read; otherwise mark it unread.
+     */
+    fun toggleFeedRead(category: String, feedId: Long) {
+        val anyUnread = _state.value.items.any { it.displayCategory == category && !it.isRead }
+        if (anyUnread) markCategoryRead(category, feedId) else markCategoryUnread(category, feedId)
+    }
+
+    /** Day group: all read ↔ all unread, article by article. */
+    fun toggleDayRead(category: String, dateKey: String) {
+        val day = _state.value.filtered.filter {
+            it.displayCategory == category && dateKeyForEpoch(it.createdOnTime) == dateKey
+        }
+        if (day.isEmpty()) return
+        val read = day.any { !it.isRead }
+        for (a in day) if (a.isRead != read) setReadState(a.id, read)
+    }
+
+    /** Whole feed → unread (server), then reload. Falls back to loaded articles. */
+    fun markCategoryUnread(category: String, feedId: Long) {
+        viewModelScope.launch {
+            if (feedId > 0 && _state.value.writable) {
+                val r = client.markFeed(feedId, read = false)
+                if (r.ok) {
+                    _state.update { it.copy(statusLine = "Marked “$category” unread") }
+                    refresh()
+                    return@launch
+                }
+                _state.update { it.copy(error = r.error ?: "mark feed unread failed") }
+            }
+            for (a in _state.value.items) {
+                if (a.displayCategory == category && a.isRead) setReadState(a.id, read = false)
+            }
+        }
+    }
+
     /** Long-press category: mark whole feed read (server + local list). */
     fun markCategoryRead(category: String, feedId: Long) {
         viewModelScope.launch {
