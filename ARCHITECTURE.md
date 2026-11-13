@@ -8,8 +8,8 @@ list, the article screen, and the tablet reading pane.
 MainActivity ── FreshRssTheme(mode, palette) ── FreshRssNav
                                                   ├─ home     HomeScreen ─┐
                                                   ├─ article  ArticleScreen ├─ HomeViewModel
-                                                  ├─ settings SettingsScreen ── SettingsViewModel
-                                                  └─ setup    (first run)
+                                                  └─ setup    SettingsScreen (first run) ── SettingsViewModel
+                                       SettingsSheet (bottom sheet over any screen) ─┘
 HomeViewModel ── FreshRssClient (Fever + Google Reader APIs) ── your FreshRSS server
               ├─ PageFetcher (web page view) ── article sites
               ├─ OfflineCache (last list, JSON in app storage)
@@ -30,8 +30,8 @@ HomeViewModel ── FreshRssClient (Fever + Google Reader APIs) ── your Fre
 | `data/offline` | `OfflineCache` | Last loaded list, shown at start and when the server is unreachable |
 | `ui/home` | `HomeScreen`, `HomeViewModel` | Feed → day → article list, filters, actions, dual pane |
 | `ui/article` | `ArticleScreen`, `ArticleContent` | Article view: lead picture, HTML body, web page view, buttons |
-| `ui/settings` | `SettingsScreen`, `SettingsViewModel` | Server, security, appearance, layout |
-| `ui/theme` | `Theme.kt`, `Palettes.kt` | Light/dark mode and color palettes |
+| `ui/settings` | `SettingsScreen` (`SettingsSheet`), `SettingsViewModel` | Bottom sheet with Server / Reading / Look / Tailscale tabs (`HorizontalPager`); first-run form |
+| `ui/theme` | `Theme.kt`, `Palettes.kt`, `Surfaces.kt` | Light/dark mode, color palettes, and the card-on-canvas colors and shapes |
 | `util` | `HtmlUtils`, `PageExtractor`, `MediaUtils`, `MediaAppLinks`, `SafeUrls`, `ServerUrl`, `Tailscale`, `FeverAuth` | Pure helpers (most have unit tests) |
 | `widget` | Glance widget, updater, state store | Unread count + last updated; pushed by the app, no polling |
 
@@ -82,7 +82,13 @@ updates the offline cache and the widget.
 `util/Tailscale.kt` sends `com.tailscale.ipn.CONNECT_VPN` / `DISCONNECT_VPN`,
 first to Tailscale's `AutomationActivity` (newer versions, wakes a stopped app),
 then to `IPNReceiver` as a broadcast (older versions). A `ConnectivityManager`
-callback on VPN transport drives the icon. The manifest declares
+callback on VPN transport drives the icon.
+
+`HomeViewModel.viaTailscale { }` wraps every server call. On mobile data (no
+Wi-Fi/Ethernet) with the VPN down and the setting on, it connects Tailscale,
+waits up to 15 s for a VPN network plus 1 s for routes and DNS, runs the call,
+and when no call has used the server for 30 s, disconnects (only if it
+connected). A counter keeps parallel calls from disconnecting each other. The manifest declares
 `<queries><package android:name="com.tailscale.ipn"/>` so the app can see Tailscale.
 
 ## Tests

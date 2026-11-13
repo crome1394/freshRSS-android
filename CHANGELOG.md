@@ -15,6 +15,10 @@ New, from the quickshell FreshRSS reader:
 Improved:
 
 - **Tailscale key toggles the VPN** (connect / disconnect) instead of only opening Tailscale. The icon shows the state, long-press opens the app, and the list reloads after connecting
+- **New look**, modeled on BlurtText: feeds and articles as rounded cards on a canvas, a search pill at the top, and a footer with the unread count and actions
+- **Settings sheet**: opens from the bottom, resizes (half ↔ full), with swipeable Server / Reading / Look / Tailscale tabs. "Title bar at bottom" is gone (actions live in the footer)
+- **Tailscale on mobile data**: off Wi-Fi, refresh connects Tailscale, updates, and disconnects after 30 s idle (only if the app connected it)
+- **New app icon** with a themed (monochrome) layer
 - **Color themes**: Tokyo Night, Catppuccin, Nord, Gruvbox, Rosé Pine, Solarized, and Wallpaper (Material You), each in light and dark
 
 Release:
