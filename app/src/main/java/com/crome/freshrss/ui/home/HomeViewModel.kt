@@ -20,6 +20,8 @@ import com.crome.freshrss.data.remote.FreshRssClient
 import com.crome.freshrss.data.remote.PageFetcher
 import com.crome.freshrss.data.remote.PageResult
 import com.crome.freshrss.util.ServerUrl
+import com.crome.freshrss.util.Provider
+import com.crome.freshrss.util.Providers
 import com.crome.freshrss.widget.FreshRssWidgetUpdater
 import kotlinx.coroutines.CancellationException
 import com.crome.freshrss.data.remote.AutoTailscale
@@ -76,6 +78,8 @@ data class HomeUiState(
     val filtersExpanded: Boolean = false,
     /** Client-side date window on loaded items. */
     val dateFilter: DateFilter = DateFilter.ALL,
+    /** Source filter (YouTube, Reddit, …); null = every source. */
+    val providerFilter: Provider? = null,
     /** Selected article for tablet dual-pane reader (null = empty pane). */
     val selectedArticleId: String? = null,
     /** Feed titles that always open as the web page view (saved). */
@@ -95,7 +99,24 @@ data class HomeUiState(
     val hasClientFilters: Boolean
         get() = mediaFilter != MediaFilter.NONE ||
             dateFilter != DateFilter.ALL ||
+            providerFilter != null ||
             searchQuery.isNotBlank()
+
+    /** Source of each known feed, by feed title. */
+    val feedProviders: Map<String, Provider>
+        get() {
+            val sample = items.groupBy { it.displayCategory }.mapValues { it.value.firstOrNull()?.url }
+            val out = LinkedHashMap<String, Provider>()
+            for (f in knownFeeds) out[f.title] = Providers.classify(f.feedUrl, f.siteUrl, sample[f.title])
+            for ((title, url) in sample) if (title !in out) out[title] = Providers.classify(url)
+            return out
+        }
+
+    /** Sources present, with how many feeds each has (for the Source chips). */
+    val providerCounts: List<Pair<Provider, Int>>
+        get() = feedProviders.values.groupingBy { it }.eachCount()
+            .toList()
+            .sortedWith(compareBy({ it.first == Provider.WEB }, { -it.second }))
 
     /**
      * Bright label for the active top-level chip (scope + optional media filter).
@@ -109,18 +130,25 @@ data class HomeUiState(
                 ReadScope.READ -> "Read"
                 ReadScope.SAVED -> "Starred"
             }
-            return when (mediaFilter) {
+            val withMedia = when (mediaFilter) {
                 MediaFilter.NONE -> scopeLabel
                 MediaFilter.VIDEO -> "$scopeLabel · Videos"
                 MediaFilter.SOUND -> "$scopeLabel · Sound"
             }
+            return providerFilter?.let { "$withMedia · ${it.label}" } ?: withMedia
         }
 
     val filtered: List<Article>
         get() {
             val q = searchQuery.trim().lowercase()
             val window = dateFilter.window()
+            val providers = if (providerFilter != null) feedProviders else emptyMap()
             return items.filter { it ->
+                if (providerFilter != null &&
+                    (providers[it.displayCategory] ?: Providers.classify(it.url)) != providerFilter
+                ) {
+                    return@filter false
+                }
                 val mediaOk = when (mediaFilter) {
                     MediaFilter.NONE -> true
                     MediaFilter.VIDEO -> it.isVideo
@@ -206,7 +234,9 @@ data class HomeUiState(
                 return out.sortedByDescending { it.createdOnTime }
             }
 
+            val providers = if (providerFilter != null) feedProviders else emptyMap()
             for (feed in sortedFeeds) {
+                if (providerFilter != null && providers[feed.title] != providerFilter) continue
                 val list = takeArticlesFor(feed)
                 // With client filters active, skip empty feeds so counters stay meaningful.
                 if (list.isEmpty() && clientFilters) continue
@@ -750,7 +780,14 @@ class HomeViewModel(
                     }
                 }
                 val knownList = known.values
-                    .map { f -> f.copy(iconUrl = f.iconUrl.ifBlank { status.feedIcons[f.title].orEmpty() }) }
+                    .map { f ->
+                        val (feedUrl, siteUrl) = status.feedLinks[f.title] ?: ("" to "")
+                        f.copy(
+                            iconUrl = f.iconUrl.ifBlank { status.feedIcons[f.title].orEmpty() },
+                            feedUrl = f.feedUrl.ifBlank { feedUrl },
+                            siteUrl = f.siteUrl.ifBlank { siteUrl },
+                        )
+                    }
                     .sortedBy { it.title.lowercase() }
                 val allCats = knownList.map { it.title }.filter { it.isNotBlank() }.toSet()
                 val collapsed = if (ReaderDefaults.autoCollapseOnLoad) {
@@ -884,6 +921,11 @@ class HomeViewModel(
     /** Session-only; start-up state is controlled in Settings → Expand filters on start. */
     fun toggleFiltersExpanded() {
         _state.update { it.copy(filtersExpanded = !it.filtersExpanded) }
+    }
+
+    /** Pick a source; picking the active one again clears it. */
+    fun setProviderFilter(provider: Provider?) {
+        _state.update { s -> s.copy(providerFilter = if (s.providerFilter == provider) null else provider) }
     }
 
     fun setDateFilter(filter: DateFilter) {

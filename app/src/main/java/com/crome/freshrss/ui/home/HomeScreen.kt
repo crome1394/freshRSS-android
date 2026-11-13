@@ -81,6 +81,13 @@ import androidx.compose.ui.draw.clip
 import com.crome.freshrss.util.Tailscale
 import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.AsyncImage
+import com.crome.freshrss.util.Provider
+import androidx.compose.material.icons.filled.AlternateEmail
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -190,6 +197,15 @@ fun HomeScreen(
         val filtersPanel: @Composable () -> Unit = {
             AnimatedVisibility(visible = state.filtersExpanded) {
                 Column(Modifier.padding(vertical = 4.dp)) {
+                    val sources = state.providerCounts
+                    if (sources.size > 1 || state.providerFilter != null) {
+                        SourceChips(
+                            sources = sources,
+                            selected = state.providerFilter,
+                            onSelect = vm::setProviderFilter,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                        )
+                    }
                     DateFilterChips(
                         selected = state.dateFilter,
                         onSelect = vm::setDateFilter,
@@ -638,6 +654,55 @@ private fun ScopeChips(
     }
 }
 
+/**
+ * Source filter: All, then each source the feeds come from (YouTube, Reddit,
+ * …, Websites) with its feed count. One line, scrolls sideways.
+ */
+@Composable
+private fun SourceChips(
+    sources: List<Pair<Provider, Int>>,
+    selected: Provider?,
+    onSelect: (Provider?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FilterChip(
+            selected = selected == null,
+            onClick = { onSelect(null) },
+            label = { Text("All sources") },
+        )
+        for ((provider, count) in sources) {
+            FilterChip(
+                selected = selected == provider,
+                onClick = { onSelect(provider) },
+                label = { Text("${provider.label} $count") },
+                leadingIcon = {
+                    Icon(
+                        providerIcon(provider),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                },
+            )
+        }
+    }
+}
+
+private fun providerIcon(p: Provider) = when (p) {
+    Provider.YOUTUBE, Provider.RUMBLE, Provider.ODYSEE -> Icons.Default.SmartDisplay
+    Provider.REDDIT -> Icons.Default.Forum
+    Provider.GITHUB -> Icons.Default.Code
+    Provider.MASTODON -> Icons.Default.AlternateEmail
+    Provider.SUBSTACK, Provider.MEDIUM -> Icons.Default.Email
+    Provider.WEB -> Icons.Default.Language
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DateFilterChips(
@@ -967,6 +1032,7 @@ private fun HomeFooter(
                     }
                     if (state.isOffline) append(" · offline")
                     if (state.dateFilter != DateFilter.ALL) append(" · ${state.dateFilter.label}")
+                    state.providerFilter?.let { append(" · ${it.label}") }
                 }
                 if (caption.isNotBlank()) {
                     Text(
@@ -982,7 +1048,9 @@ private fun HomeFooter(
                 Icon(
                     Icons.Default.FilterAlt,
                     contentDescription = if (state.filtersExpanded) "Hide filters" else "Filters",
-                    tint = if (state.filtersExpanded || state.dateFilter != DateFilter.ALL) {
+                    tint = if (state.filtersExpanded || state.dateFilter != DateFilter.ALL ||
+                        state.providerFilter != null
+                    ) {
                         scheme.primary
                     } else {
                         scheme.ink()

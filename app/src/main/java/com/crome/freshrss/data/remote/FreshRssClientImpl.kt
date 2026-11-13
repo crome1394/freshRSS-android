@@ -131,6 +131,7 @@ class FreshRssClientImpl(
 
         val titles = mutableMapOf<String, Int>()
         val icons = mutableMapOf<String, String>()
+        val links = mutableMapOf<String, Pair<String, String>>()
         val subsArr = subs.optJSONArray("subscriptions") ?: JSONArray()
         for (i in 0 until subsArr.length()) {
             val s = subsArr.getJSONObject(i)
@@ -139,6 +140,7 @@ class FreshRssClientImpl(
             titles[title] = byStream[sid] ?: 0
             val icon = ServerUrl.iconUrl(s.optString("iconUrl"), base)
             if (icon.isNotBlank()) icons[title] = icon
+            links[title] = s.optString("url") to s.optString("htmlUrl")
         }
 
         val n = counts.optInt("max", 0).takeIf { it > 0 }
@@ -155,6 +157,7 @@ class FreshRssClientImpl(
             titles = titles,
             labels = labels,
             feedIcons = icons,
+            feedLinks = links,
             source = "greader",
         )
     }
@@ -269,6 +272,8 @@ class FreshRssClientImpl(
                     id = fid,
                     title = title,
                     iconUrl = ServerUrl.iconUrl(sub.optString("iconUrl"), base),
+                    feedUrl = sub.optString("url"),
+                    siteUrl = sub.optString("htmlUrl"),
                 )
             }
         }

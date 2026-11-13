@@ -119,6 +119,8 @@ data class StatusResult(
     val labels: Map<String, Int> = emptyMap(),
     /** feed title → site icon URL kept by FreshRSS */
     val feedIcons: Map<String, String> = emptyMap(),
+    /** feed title → (feed URL, site URL), for the Source filter */
+    val feedLinks: Map<String, Pair<String, String>> = emptyMap(),
     val source: String = "",
     val error: String? = null,
 )
@@ -130,6 +132,9 @@ data class FeedRef(
     val title: String,
     /** Site icon from the FreshRSS server ("" = letter badge). */
     val iconUrl: String = "",
+    /** The feed's own URL and its website, for the Source filter. */
+    val feedUrl: String = "",
+    val siteUrl: String = "",
 )
 
 /**
