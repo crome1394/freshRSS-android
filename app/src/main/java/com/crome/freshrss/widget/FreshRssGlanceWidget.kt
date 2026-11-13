@@ -20,11 +20,9 @@ import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
-import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
@@ -71,63 +69,51 @@ private fun WidgetContent(state: WidgetState) {
     } else {
         "Open to load"
     }
-    val updatedLabel = if (state.hasData) {
-        "Updated ${formatWidgetTime(state.lastUpdatedEpochMs)}"
-    } else {
-        "Not updated yet"
-    }
+    val updatedLabel = if (state.hasData) formatWidgetTime(state.lastUpdatedEpochMs) else ""
 
+    // One tight row: icon · "8 new" · update time at the right.
     Row(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(GlanceTheme.colors.widgetBackground)
-            .padding(12.dp)
+            .padding(horizontal = 12.dp, vertical = 4.dp)
             .clickable(actionStartActivity<MainActivity>()),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
             provider = ImageProvider(R.mipmap.ic_launcher),
             contentDescription = context.getString(R.string.app_name),
-            modifier = GlanceModifier.size(40.dp),
+            modifier = GlanceModifier.size(28.dp),
         )
-        Spacer(GlanceModifier.width(10.dp))
-        Column(
-            modifier = GlanceModifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = context.getString(R.string.app_name),
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-                maxLines = 1,
-            )
-            Text(
-                text = countLabel,
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurface,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-                maxLines = 1,
-            )
-            Text(
-                text = updatedLabel,
-                style = TextStyle(
-                    color = GlanceTheme.colors.onSurfaceVariant,
-                    fontSize = 11.sp,
-                ),
-                maxLines = 1,
-            )
-        }
+        Spacer(GlanceModifier.width(8.dp))
+        Text(
+            text = countLabel,
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurface,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            maxLines = 1,
+            modifier = GlanceModifier.defaultWeight(),
+        )
+        Text(
+            text = updatedLabel,
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = 11.sp,
+            ),
+            maxLines = 1,
+        )
     }
 }
 
+/** Time if today, else a short date — it has to fit beside the count. */
 private fun formatWidgetTime(epochMs: Long): String {
     if (epochMs <= 0L) return ""
-    return SimpleDateFormat("MMM d  HH:mm", Locale.getDefault()).format(Date(epochMs))
+    val today = SimpleDateFormat("yyyyMMdd", Locale.US)
+    val sameDay = today.format(Date(epochMs)) == today.format(Date())
+    val pattern = if (sameDay) "HH:mm" else "MMM d"
+    return SimpleDateFormat(pattern, Locale.getDefault()).format(Date(epochMs))
 }
 
 class FreshRssGlanceWidgetReceiver : GlanceAppWidgetReceiver() {

@@ -5,18 +5,19 @@
     android:layout_height="match_parent"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="12dp">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="4dp">
 
     <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
         android:contentDescription="@string/app_name"
         android:src="@mipmap/ic_launcher" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
+        android:layout_marginStart="8dp"
         android:text="@string/widget_loading"
         android:textSize="14sp" />
 </LinearLayout>
