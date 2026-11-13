@@ -15,6 +15,12 @@ A personal Android reader for your own [FreshRSS](https://freshrss.org/) server,
 
 Point it at your server (LAN, Tailscale, or HTTPS). No third-party account, no tracking, and articles load no images unless you ask.
 
+<p align="center">
+  <img src="docs/screenshots/list.webp" width="200" alt="Feed list">
+  <img src="docs/screenshots/article.webp" width="200" alt="Article">
+  <img src="docs/screenshots/liquid-glass.webp" width="200" alt="Liquid glass theme">
+</p>
+
 ## Download
 
 Get the APK from **[Releases](https://github.com/crome1394/freshRSS-android/releases/latest)** and sideload it (allow "Install unknown apps").
@@ -24,14 +30,23 @@ Coming from 0.7.x? Uninstall it first. 0.8.0 is signed with a new key ([why](doc
 
 | | |
 |---|---|
-| **Reader** | Feeds A–Z with site icons → days → articles; Unread / All / Read / Starred; video and sound filters; date filter; search |
+| **Reader** | Feeds A–Z with site icons → days → articles; Unread / All / Read / Starred; video and sound filters; **source filter** (YouTube, Reddit, …); date filter; search |
 | **Article** | Full text with links, lead picture, **web page view** (the site's main text, without the clutter), copy link, share |
 | **Actions** | Swipe read/unread, star, whole feed or day read ↔ unread |
 | **Media** | Play / Listen opens YouTube, NewPipe, Spotify, and similar apps |
 | **Tailscale** | Footer key connects and disconnects the VPN; on mobile data a refresh connects, updates, and disconnects by itself |
 | **Look** | Card layout with a search pill and footer; 13 color themes (including the quickshell Liquid and Classic presets and Material You), each light and dark; tablet dual pane |
 | **Settings** | Resizable bottom sheet with swipeable Server / Reading / Look / Tailscale tabs |
-| **Offline** | Last list cached; home-screen widget with the unread count |
+| **Offline** | Last list cached; one-row home-screen widget with the unread count |
+| **Big screens** | Tablet and Fold two-pane layout; Android 8.0+ |
+
+## Screenshots
+
+| Source filter | Settings | Tablet |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/source-filter.webp" width="200" alt="Source filter showing YouTube feeds"> | <img src="docs/screenshots/settings.webp" width="200" alt="Settings sheet, Look tab"> | <img src="docs/screenshots/tablet.webp" width="360" alt="Tablet two-pane layout"> |
+
+Screenshots use made-up demo feeds from [`tools/mock-freshrss.py`](tools/mock-freshrss.py).
 
 ## Quick start
 

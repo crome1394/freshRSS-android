@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.1
+
+- **Source filter**: Filters → Source shows only YouTube, Reddit, GitHub, Mastodon, Rumble, Odysee, Substack, Medium, or plain websites, with feed counts
+- **Widget** is one tight row: icon, "N new", and the update time
+- **Tailscale on mobile data** disconnects right after a sync: 5 s idle, at once when you leave the app, and by a system alarm if Android kills the app first (it could stay connected before)
+- Tablets and Folds: two-pane list is 360–480 dp wide, Back closes the open article first, scope chips stay on one line, text and forms keep a readable width
+- Samsung: settings tabs scroll at large font sizes; Tailscale is reached even after Samsung's battery saver force-stops it
+- The keyboard closes after setup and when Settings opens
+- Tokyo Night light uses dark text instead of link-blue; paragraphs have a gap between them; previews no longer strand a lone "…"
+- Tested on Android 8.0 and 9, a Pixel Tablet, and a Pixel Fold
+- Builds leave out the dependency metadata block (needed for F-Droid)
+
 ## 0.8.0
 
 New, from the quickshell FreshRSS reader:

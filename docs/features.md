@@ -15,6 +15,7 @@
 | Article read / unread | Swipe left = read, swipe right = unread |
 | Star | Star button on the row, or long-press the row |
 | Collapse / expand all | ⇕ in the footer |
+| Source filter | Funnel in the footer → Source: All sources, YouTube, Reddit, GitHub, Mastodon, Rumble, Odysee, Substack, Medium, Websites (only the ones your feeds use, with feed counts) |
 | Date and download filters | Funnel in the footer |
 | Download size | Settings → Reading → History days (default 30), or the per feed / max articles limits when history is 0 |
 
@@ -77,7 +78,9 @@ Settings → Look:
 | Colors | From the quickshell bar: Liquid amber · Liquid glass · Liquid ice · Ink · Solid dark · Deep ocean. Classics: Tokyo Night · Catppuccin · Nord · Gruvbox · Rosé Pine · Solarized · Wallpaper (Android 12+) |
 | Layout | Scope chips and filters can sit at the top or just above the footer |
 
-On a tablet in landscape (≥ 840 dp wide) the list and the article sit side by side.
+On a tablet in landscape or an unfolded Fold (≥ 840 dp wide) the list (360–480 dp) and the
+article sit side by side; Back closes the article first. Narrower big screens keep the list and
+text at most 720 dp wide.
 
 Every palette has a light and a dark version. The "liquid" ones (and Ink, Deep ocean) stand in
 for quickshell's glass with a soft accent glow behind translucent cards.
@@ -85,4 +88,4 @@ for quickshell's glass with a soft accent glow behind translucent cards.
 ## Offline and widget
 
 - The last loaded list is saved and shown when the server can't be reached ("offline" in the title).
-- Home-screen widget: unread count and last update. The app updates it when you read, mark, or refresh (no background polling).
+- Home-screen widget: one row with the unread count and last update time (one cell high). The app updates it when you read, mark, or refresh (no background polling).

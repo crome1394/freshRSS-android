@@ -17,31 +17,37 @@ from urllib.parse import urlparse
 NOW = int(time.time())
 H = 3600
 
+# (title, site URL, feed URL, [(title, summary, link or None)]) — all made up.
 FEEDS = [
-    ("Ars Technica", "https://arstechnica.com", [
-        ("The quiet return of the home server", "Self-hosting is having a moment as people move their photos, notes, and feeds back onto hardware they own."),
-        ("Inside the chip that runs your thermostat", "A teardown of the tiny controller that decides when your heat comes on."),
-        ("Why your next laptop might have a repairable battery", "New rules and a few stubborn engineers are changing how laptops are put together."),
+    ("Byte Review", "https://bytereview.example", "https://bytereview.example/feed", [
+        ("The quiet return of the home server", "Self-hosting is having a moment as people move their photos, notes, and feeds back onto hardware they own.", None),
+        ("Why your next laptop might have a repairable battery", "New rules and a few stubborn engineers are changing how laptops are put together.", None),
+        ("Hands-on with a tablet that finally replaces my laptop", "Bigger screens, better keyboards, and software that uses them.", None),
     ]),
-    ("CachyOS", "https://cachyos.org", [
-        ("November release: faster boot and a new installer", "The installer gains a guided partitioning screen and the kernel picks up new scheduler work."),
-        ("Community spotlight: tiling setups", "Readers share their Hyprland and Sway configurations."),
+    ("Linux Desk", "https://linuxdesk.example", "https://linuxdesk.example/rss", [
+        ("November release: faster boot and a new installer", "The installer gains a guided partitioning screen and the kernel picks up scheduler work.", None),
+        ("Tiling window managers, explained", "Readers share their Hyprland and Sway setups.", None),
     ]),
-    ("Hacker News", "https://news.ycombinator.com", [
-        ("Show HN: A reader for my FreshRSS server", "I wanted something that felt like my messaging app, so I built one."),
-        ("The case for boring technology, ten years on", "Revisiting the essay that told us to spend innovation tokens carefully."),
-        ("Ask HN: How do you read the news?", "RSS, newsletters, or nothing at all?"),
+    ("Night Sky Daily", "https://nightsky.example", "https://nightsky.example/feed.xml", [
+        ("Aurora over the Gulf of Alaska", "A ribbon of green light captured from orbit.", None),
+        ("How to photograph the Geminids", "Settings, lenses, and where to point your camera.", None),
     ]),
-    ("NASA Image of the Day", "https://www.nasa.gov", [
-        ("Aurora over the Gulf of Alaska", "Astronauts captured a ribbon of green light from the International Space Station."),
-        ("A new look at the Pillars of Creation", "Combined infrared views reveal stars forming inside the dust."),
+    ("r/selfhosted", "https://www.reddit.com/r/selfhosted/", "https://www.reddit.com/r/selfhosted/.rss", [
+        ("My FreshRSS + Tailscale setup after a year", "Everything runs on a mini PC in the closet.", "https://www.reddit.com/r/selfhosted/comments/abc123/"),
+        ("What do you self-host that you can't live without?", "Weekly thread.", "https://www.reddit.com/r/selfhosted/comments/abc124/"),
     ]),
-    ("The Verge", "https://www.theverge.com", [
-        ("The best e-readers to buy right now", "From budget picks to color screens, here is what we recommend."),
-        ("Tablets are good again", "Bigger screens, better keyboards, and software that finally uses them."),
+    ("r/androiddev", "https://www.reddit.com/r/androiddev/", "https://www.reddit.com/r/androiddev/.rss", [
+        ("Compose bottom sheets with swipeable tabs", "A small pattern that works well for settings screens.", "https://www.reddit.com/r/androiddev/comments/abc125/"),
     ]),
-    ("Linux Weekly", "https://lwn.net", [
-        ("Kernel 6.x merge window highlights", "Memory management, new drivers, and a long-awaited scheduler change."),
+    ("Orbit Explained", "https://www.youtube.com/channel/UCorbit", "https://www.youtube.com/feeds/videos.xml?channel_id=UCorbit", [
+        ("How do satellites stay up?", "A twelve-minute tour of orbital mechanics.", "https://www.youtube.com/watch?v=aaaaaaaaaaa"),
+        ("Building a backyard radio telescope", "Parts, software, and first light.", "https://www.youtube.com/watch?v=bbbbbbbbbbb"),
+    ]),
+    ("Workshop Notes", "https://www.youtube.com/channel/UCworkshop", "https://www.youtube.com/feeds/videos.xml?channel_id=UCworkshop", [
+        ("Restoring a 1970s bench drill", "Rust, paint, and new bearings.", "https://www.youtube.com/watch?v=ccccccccccc"),
+    ]),
+    ("Release Notes: reader-app", "https://github.com/example/reader-app", "https://github.com/example/reader-app/releases.atom", [
+        ("v2.4.0: offline mode and widgets", "Full changelog in the release.", "https://github.com/example/reader-app/releases/tag/v2.4.0"),
     ]),
 ]
 
@@ -51,9 +57,10 @@ def stream_id(i):
 
 
 def items_for(i):
-    title, site, posts = FEEDS[i]
+    title, site, _feed, posts = FEEDS[i]
     out = []
-    for j, (t, body) in enumerate(posts):
+    for j, (t, body, link) in enumerate(posts):
+        link = link or f"{site}/posts/{j + 1}"
         age = (i * 5 + j * 7 + 1) * H // 2
         read = (i + j) % 3 == 2
         cats = ["user/-/state/com.google/reading-list"]
@@ -67,8 +74,8 @@ def items_for(i):
             "published": NOW - age,
             "author": "Staff",
             "categories": cats,
-            "canonical": [{"href": f"{site}/posts/{j + 1}"}],
-            "alternate": [{"href": f"{site}/posts/{j + 1}"}],
+            "canonical": [{"href": link}],
+            "alternate": [{"href": link}],
             "summary": {"content": f"<p>{body}</p><p>{body} More of the story continues on the site, "
                                    f"with details, quotes, and links to related coverage.</p>"},
             "origin": {"streamId": stream_id(i), "title": title},
@@ -95,9 +102,9 @@ class Handler(BaseHTTPRequestHandler):
         if path.endswith("/reader/api/0/token"):
             return self.send("mocktoken", "text/plain")
         if path.endswith("/subscription/list"):
-            subs = [{"id": stream_id(i), "title": t, "htmlUrl": site, "url": site + "/feed",
+            subs = [{"id": stream_id(i), "title": t, "htmlUrl": site, "url": feed,
                      "categories": [{"id": "user/-/label/News", "label": "News"}]}
-                    for i, (t, site, _) in enumerate(FEEDS)]
+                    for i, (t, site, feed, _) in enumerate(FEEDS)]
             return self.send(json.dumps({"subscriptions": subs}))
         if path.endswith("/unread-count"):
             counts, total = [], 0
