@@ -81,6 +81,9 @@ import androidx.compose.ui.draw.clip
 import com.crome.freshrss.util.Tailscale
 import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.AsyncImage
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crome.freshrss.BuildConfig
@@ -106,6 +109,8 @@ fun HomeScreen(
     dualPane: Boolean = false,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val listScope = rememberCoroutineScope()
 
     val titleBlock: @Composable () -> Unit = {
         Column {
@@ -298,6 +303,13 @@ fun HomeScreen(
             }
         }
 
+        // Opening a feed or day scrolls it to the top of the list. Rows above
+        // it do not change when it expands, so its current index stays right.
+        val scrollToRow: (ListRow) -> Unit = { row ->
+            val idx = state.listRows.indexOf(row)
+            if (idx >= 0) listScope.launch { listState.animateScrollToItem(idx) }
+        }
+
         val listColumn: @Composable (Modifier) -> Unit = { listMod ->
             Column(listMod) {
                 if (!state.scopeChipsAtBottom) {
@@ -344,6 +356,7 @@ fun HomeScreen(
                         }
                     } else {
                         LazyColumn(
+                            state = listState,
                             contentPadding = PaddingValues(bottom = 24.dp),
                             modifier = Modifier.fillMaxSize(),
                         ) {
@@ -361,14 +374,20 @@ fun HomeScreen(
                                 when (row) {
                                     is ListRow.Header -> FeedHeaderRow(
                                         row = row,
-                                        onClick = { vm.toggleCategory(row.category) },
+                                        onClick = {
+                                            if (row.collapsed) scrollToRow(row)
+                                            vm.toggleCategory(row.category)
+                                        },
                                         onToggleRead = {
                                             vm.toggleFeedRead(row.category, row.feedId)
                                         },
                                     )
                                     is ListRow.DateHeader -> DateHeaderRow(
                                         row = row,
-                                        onClick = { vm.toggleDateGroup(row.category, row.dateKey) },
+                                        onClick = {
+                                            if (row.collapsed) scrollToRow(row)
+                                            vm.toggleDateGroup(row.category, row.dateKey)
+                                        },
                                         onLongClick = { vm.toggleDayRead(row.category, row.dateKey) },
                                     )
                                     is ListRow.Item -> SwipeableArticleRow(
@@ -845,7 +864,7 @@ private fun ArticleRow(
                 } else {
                     MaterialTheme.colorScheme.onSurface
                 },
-                maxLines = 2,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(2.dp))
