@@ -8,9 +8,6 @@
 .externalNativeBuild/
 .cxx/
 *.apk
-# Ship a downloadable build from the repo (see README).
-!releases/
-!releases/*.apk
 *.ap_
 *.aab
 app/build/
