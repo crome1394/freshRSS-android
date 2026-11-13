@@ -22,9 +22,7 @@ import com.crome.freshrss.data.remote.PageResult
 import com.crome.freshrss.util.ServerUrl
 import com.crome.freshrss.widget.FreshRssWidgetUpdater
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeoutOrNull
-import com.crome.freshrss.util.Tailscale
+import com.crome.freshrss.data.remote.AutoTailscale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -427,61 +425,17 @@ class HomeViewModel(
     application: Application,
     private val client: FreshRssClient,
     private val settings: SettingsRepository,
+    private val tailscale: AutoTailscale,
 ) : AndroidViewModel(application) {
 
     private val offline = OfflineCache(application.applicationContext)
     private val pageFetcher = PageFetcher()
 
-    // ── Tailscale on mobile data ────────────────────────────────────────
-    // On mobile data (setting on, Tailscale installed, VPN down) server calls
-    // connect Tailscale first. When the last call finishes and nothing else
-    // needs the server for TAILSCALE_LINGER_MS, we disconnect again, but only
-    // if we were the ones who connected it.
-    private var tailscaleUsers = 0
-    private var tailscaleOurs = false
-    private var tailscaleDisconnect: Job? = null
-
-    private suspend fun <T> viaTailscale(block: suspend () -> T): T {
-        val ctx = getApplication<Application>()
-        tailscaleDisconnect?.cancel()
-        tailscaleUsers++
-        try {
-            if (!Tailscale.isVpnActive(ctx) &&
-                settings.autoTailscale.first() &&
-                Tailscale.isInstalled(ctx) &&
-                Tailscale.isOnMobileData(ctx) &&
-                Tailscale.setConnected(ctx, connect = true)
-            ) {
-                tailscaleOurs = true
-                _state.update { it.copy(tailscaleConnecting = true) }
-                try {
-                    withTimeoutOrNull(TAILSCALE_CONNECT_TIMEOUT_MS) {
-                        Tailscale.vpnActiveFlow(ctx).first { it }
-                    }
-                    // Give MagicDNS and routes a moment after the interface appears.
-                    delay(TAILSCALE_SETTLE_MS)
-                } finally {
-                    _state.update { it.copy(tailscaleConnecting = false) }
-                }
-            }
-            return block()
-        } finally {
-            tailscaleUsers--
-            if (tailscaleUsers == 0 && tailscaleOurs) {
-                tailscaleDisconnect = viewModelScope.launch {
-                    delay(TAILSCALE_LINGER_MS)
-                    if (tailscaleUsers == 0 && tailscaleOurs) {
-                        Tailscale.setConnected(ctx, connect = false)
-                        tailscaleOurs = false
-                    }
-                }
-            }
-        }
-    }
+    private suspend fun <T> viaTailscale(block: suspend () -> T): T = tailscale.run(block)
 
     override fun onCleared() {
         // Leaving the app: don't keep a VPN we started up.
-        if (tailscaleOurs) Tailscale.setConnected(getApplication(), connect = false)
+        tailscale.disconnectNow()
         super.onCleared()
     }
 
@@ -540,6 +494,11 @@ class HomeViewModel(
         viewModelScope.launch {
             settings.allowCleartextHttp.collect { allow ->
                 _state.update { it.copy(allowCleartextHttp = allow) }
+            }
+        }
+        viewModelScope.launch {
+            tailscale.connecting.collect { c ->
+                _state.update { it.copy(tailscaleConnecting = c) }
             }
         }
         viewModelScope.launch {
@@ -1267,19 +1226,16 @@ class HomeViewModel(
     companion object {
         /** Web pages kept in memory at once. */
         private const val PAGE_CACHE = 20
-        private const val TAILSCALE_CONNECT_TIMEOUT_MS = 15_000L
-        private const val TAILSCALE_SETTLE_MS = 1_000L
-        /** Idle time before an auto-connected Tailscale is disconnected. */
-        private const val TAILSCALE_LINGER_MS = 30_000L
 
         fun factory(
             application: Application,
             client: FreshRssClient,
             settings: SettingsRepository,
+            tailscale: AutoTailscale,
         ) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                HomeViewModel(application, client, settings) as T
+                HomeViewModel(application, client, settings, tailscale) as T
         }
     }
 }

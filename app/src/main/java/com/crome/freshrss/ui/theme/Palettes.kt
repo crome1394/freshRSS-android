@@ -4,13 +4,26 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 
 /**
  * Color themes (Settings → Appearance). Each has a light and a dark variant;
  * Light / Dark / System picks between them. [DYNAMIC] uses the wallpaper
  * colors on Android 12+ and falls back to [TOKYO_NIGHT] before that.
  */
-enum class AppPalette(val storageValue: String, val label: String) {
+enum class AppPalette(
+    val storageValue: String,
+    val label: String,
+    /** Liquid look: accent glow on the canvas, translucent cards with a hairline edge. */
+    val glass: Boolean = false,
+) {
+    // From the quickshell bar (Settings → Appearance → Theme), adapted for a phone.
+    LIQUID_AMBER("liquid_amber", "Liquid amber", glass = true),
+    LIQUID_GLASS("liquid_glass", "Liquid glass", glass = true),
+    LIQUID_ICE("liquid_ice", "Liquid ice", glass = true),
+    INK("ink", "Ink", glass = true),
+    SOLID_DARK("solid_dark", "Solid dark"),
+    DEEP_OCEAN("deep_ocean", "Deep ocean", glass = true),
     TOKYO_NIGHT("tokyo_night", "Tokyo Night"),
     CATPPUCCIN("catppuccin", "Catppuccin"),
     NORD("nord", "Nord"),
@@ -171,8 +184,92 @@ private val SolarizedLight = Swatch(
     error = 0xFFC0262A, outline = 0xFF93A1A1,
 )
 
+/*
+ * Quickshell presets are dark glass over the wallpaper: a tint, an accent, an
+ * alert color, and sometimes their own text colors. On a phone the tint
+ * becomes the dark base, cards are lifted a step toward the accent, and the
+ * light variant is paper washed with the accent, the accent darkened until
+ * it reads on that paper.
+ */
+private fun mix(a: Color, b: Color, t: Float): Color = androidx.compose.ui.graphics.lerp(a, b, t)
+
+private fun readableOn(color: Color, bg: Color, darken: Boolean): Color {
+    var c = color
+    var i = 0
+    while (contrastRatio(c, bg) < 4.5f && i < 20) {
+        c = mix(c, if (darken) Color.Black else Color.White, 0.08f)
+        i++
+    }
+    return c
+}
+
+private fun Color.argbLong(): Long = (0xFF000000L or (toArgb().toLong() and 0xFFFFFFL))
+
+private fun quickshell(
+    accent: Long,
+    alert: Long,
+    tint: Long,
+    dark: Boolean,
+    fg: Long? = null,
+    muted: Long? = null,
+): Swatch {
+    val a = Color(accent)
+    val al = Color(alert)
+    val t = Color(tint)
+    return if (dark) {
+        val bg = t
+        val surface = mix(t, Color.White, 0.05f).let { mix(it, a, 0.03f) }
+        val variant = mix(t, Color.White, 0.11f).let { mix(it, a, 0.06f) }
+        val on = fg?.let { Color(it) } ?: mix(Color(0xFFF2F2F4), a, 0.06f)
+        val mu = muted?.let { Color(it) } ?: readableOn(mix(on, surface, 0.38f), surface, darken = false)
+        Swatch(
+            background = bg.argbLong(), surface = surface.argbLong(), surfaceVariant = variant.argbLong(),
+            onSurface = on.argbLong(), muted = mu.argbLong(),
+            primary = readableOn(a, surface, darken = false).argbLong(), onPrimary = t.argbLong(),
+            primaryContainer = mix(variant, a, 0.28f).argbLong(), onPrimaryContainer = on.argbLong(),
+            secondary = al.argbLong(), error = al.argbLong(),
+            outline = mix(variant, on, 0.25f).argbLong(),
+        )
+    } else {
+        val surface = mix(Color.White, a, 0.025f)
+        val bg = mix(Color.White, a, 0.07f)
+        val variant = mix(Color.White, a, 0.14f)
+        val on = mix(t, Color.Black, 0.2f).let { if (contrastRatio(it, surface) < 7f) Color(0xFF15171C) else it }
+        val mu = readableOn(mix(on, surface, 0.4f), surface, darken = true)
+        val primary = readableOn(a, surface, darken = true)
+        Swatch(
+            background = bg.argbLong(), surface = surface.argbLong(), surfaceVariant = variant.argbLong(),
+            onSurface = on.argbLong(), muted = mu.argbLong(),
+            primary = primary.argbLong(), onPrimary = 0xFFFFFFFF,
+            primaryContainer = mix(Color.White, a, 0.24f).argbLong(), onPrimaryContainer = on.argbLong(),
+            secondary = readableOn(al, surface, darken = true).argbLong(),
+            error = readableOn(al, surface, darken = true).argbLong(),
+            outline = mix(variant, on, 0.3f).argbLong(),
+        )
+    }
+}
+
+private fun AppPalette.quickshellSwatch(dark: Boolean): Swatch? = when (this) {
+    AppPalette.LIQUID_AMBER -> quickshell(0xFFFBBF24, 0xFFFB7185, 0xFF17120A, dark)
+    AppPalette.LIQUID_GLASS -> quickshell(0xFF00F0E0, 0xFFFF3D8A, 0xFF0A0F1A, dark)
+    AppPalette.LIQUID_ICE -> quickshell(0xFF7DD3FC, 0xFFA5B4FC, 0xFF0A121F, dark)
+    AppPalette.INK -> quickshell(0xFFE4C58A, 0xFFD4A0A0, 0xFF0D0B0A, dark)
+    AppPalette.SOLID_DARK -> quickshell(0xFF00C4F5, 0xFFE85D6F, 0xFF000000, dark, fg = 0xFFECECEE, muted = 0xFFB0B0B2)
+        .let { if (dark) it.copy(surface = 0xFF121214, surfaceVariant = 0xFF1E1E21) else it }
+    AppPalette.DEEP_OCEAN -> quickshell(0xFF3DB8C9, 0xFFE06C75, 0xFF0B1219, dark, fg = 0xFFE6F0FA, muted = 0xFF8FA3B8)
+    else -> null
+}
+
+/** Accent glow for glass palettes: (accent, tint) to paint the canvas with. */
+fun AppPalette.glow(dark: Boolean): Pair<Color, Color>? {
+    if (!glass) return null
+    val sw = quickshellSwatch(dark) ?: return null
+    return Color(sw.primary) to Color(sw.background)
+}
+
 /** Color scheme for a fixed palette ([AppPalette.DYNAMIC] is resolved by the caller). */
 fun AppPalette.scheme(dark: Boolean): ColorScheme {
+    quickshellSwatch(dark)?.let { return if (dark) it.dark() else it.light() }
     val (d, l) = when (this) {
         AppPalette.TOKYO_NIGHT, AppPalette.DYNAMIC -> TokyoNightDark to TokyoNightLight
         AppPalette.CATPPUCCIN -> CatppuccinDark to CatppuccinLight
@@ -180,6 +277,7 @@ fun AppPalette.scheme(dark: Boolean): ColorScheme {
         AppPalette.GRUVBOX -> GruvboxDark to GruvboxLight
         AppPalette.ROSE_PINE -> RosePineDark to RosePineLight
         AppPalette.SOLARIZED -> SolarizedDark to SolarizedLight
+        else -> TokyoNightDark to TokyoNightLight
     }
     return if (dark) d.dark() else l.light()
 }

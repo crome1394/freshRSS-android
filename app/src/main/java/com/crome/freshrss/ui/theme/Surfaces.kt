@@ -6,6 +6,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 
 /*
  * Card-on-canvas look borrowed from BlurtText's inbox: a page one step lighter
@@ -45,3 +57,54 @@ fun contrastRatio(foreground: Color, background: Color): Float {
 
 val CardShape = RoundedCornerShape(20.dp)
 val PillShape = RoundedCornerShape(24.dp)
+
+/**
+ * Card background: solid with a shadow, or for glass palettes translucent with
+ * a hairline accent edge (shadows look muddy under see-through cards).
+ */
+@Composable
+fun Modifier.cardSurface(shape: Shape = CardShape, elevation: Dp = 8.dp): Modifier {
+    val scheme = MaterialTheme.colorScheme
+    return if (LocalLook.current.glass) {
+        this
+            .clip(shape)
+            .background(scheme.card().copy(alpha = 0.66f))
+            .border(1.dp, scheme.primary.copy(alpha = 0.22f), shape)
+    } else {
+        this
+            .shadow(elevation, shape)
+            .clip(shape)
+            .background(scheme.card())
+    }
+}
+
+/**
+ * Page background. Glass palettes get the tint with soft accent and alert glows,
+ * standing in for the wallpaper the quickshell glass shows through.
+ */
+@Composable
+fun Modifier.canvasBackground(): Modifier {
+    val scheme = MaterialTheme.colorScheme
+    val look = LocalLook.current
+    val glow = look.palette.glow(look.dark) ?: return this.background(scheme.canvas())
+    val (accent, tint) = glow
+    val base = if (look.dark) tint else scheme.background
+    return this
+        .background(base)
+        .drawBehind {
+            drawRect(
+                Brush.radialGradient(
+                    colors = listOf(accent.copy(alpha = if (look.dark) 0.20f else 0.14f), Color.Transparent),
+                    center = Offset(size.width * 0.1f, size.height * 0.05f),
+                    radius = size.maxDimension * 0.75f,
+                ),
+            )
+            drawRect(
+                Brush.radialGradient(
+                    colors = listOf(scheme.secondary.copy(alpha = if (look.dark) 0.12f else 0.08f), Color.Transparent),
+                    center = Offset(size.width * 0.95f, size.height * 0.9f),
+                    radius = size.maxDimension * 0.6f,
+                ),
+            )
+        }
+}

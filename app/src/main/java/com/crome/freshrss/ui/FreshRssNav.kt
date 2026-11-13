@@ -30,6 +30,7 @@ import com.crome.freshrss.ui.settings.SettingsSheet
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.crome.freshrss.ui.settings.SettingsViewModel
 import kotlinx.coroutines.flow.first
+import com.crome.freshrss.freshRssApp
 
 object Routes {
     const val HOME = "home"
@@ -47,12 +48,12 @@ fun FreshRssNav(
     val app = LocalContext.current.applicationContext as Application
     val homeVm: HomeViewModel = viewModel(
         factory = remember(client, settings, app) {
-            HomeViewModel.factory(app, client, settings)
+            HomeViewModel.factory(app, client, settings, app.freshRssApp.tailscale)
         },
     )
     val settingsVm: SettingsViewModel = viewModel(
         factory = remember(settings, client) {
-            SettingsViewModel.factory(settings, client)
+            SettingsViewModel.factory(settings, client, app.freshRssApp.tailscale)
         },
     )
 

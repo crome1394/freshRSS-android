@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.crome.freshrss.data.model.FreshRssConfig
 import com.crome.freshrss.data.prefs.SettingsRepository
 import com.crome.freshrss.data.remote.FreshRssClient
+import com.crome.freshrss.data.remote.AutoTailscale
 import com.crome.freshrss.ui.theme.AppPalette
 import com.crome.freshrss.ui.theme.AppThemeMode
 import com.crome.freshrss.util.ServerUrl
@@ -48,6 +49,7 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val settings: SettingsRepository,
     private val client: FreshRssClient,
+    private val tailscale: AutoTailscale,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsUiState())
@@ -193,19 +195,29 @@ class SettingsViewModel(
                 }
                 return@launch
             }
-            val status = client.status()
-            if (!status.ok) {
+            // Off Wi-Fi, connect Tailscale for the test like a refresh does.
+            if (tailscale.willConnect()) {
+                _state.update { it.copy(testResult = "Connecting Tailscale…") }
+            }
+            val (status, all) = tailscale.run {
+                val st = client.status()
+                st to if (st.ok) {
+                    client.items(
+                        limit = s.itemLimit,
+                        scope = com.crome.freshrss.data.model.ReadScope.ALL,
+                        perFeed = s.perFeedLimit,
+                        historyDays = s.historyDays,
+                    )
+                } else {
+                    null
+                }
+            }
+            if (!status.ok || all == null) {
                 _state.update {
                     it.copy(testing = false, testResult = "Failed status: ${status.error}")
                 }
                 return@launch
             }
-            val all = client.items(
-                limit = s.itemLimit,
-                scope = com.crome.freshrss.data.model.ReadScope.ALL,
-                perFeed = s.perFeedLimit,
-                historyDays = s.historyDays,
-            )
             val msg = if (!all.ok) {
                 "Status OK but All failed: ${all.error}"
             } else {
@@ -218,11 +230,11 @@ class SettingsViewModel(
     }
 
     companion object {
-        fun factory(settings: SettingsRepository, client: FreshRssClient) =
+        fun factory(settings: SettingsRepository, client: FreshRssClient, tailscale: AutoTailscale) =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    SettingsViewModel(settings, client) as T
+                    SettingsViewModel(settings, client, tailscale) as T
             }
     }
 }

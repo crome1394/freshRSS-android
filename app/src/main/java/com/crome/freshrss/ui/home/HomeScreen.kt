@@ -99,6 +99,9 @@ import androidx.compose.ui.unit.Dp
 import com.crome.freshrss.ui.theme.CardShape
 import com.crome.freshrss.ui.theme.PillShape
 import com.crome.freshrss.ui.theme.canvas
+import com.crome.freshrss.ui.theme.canvasBackground
+import com.crome.freshrss.ui.theme.cardSurface
+import com.crome.freshrss.ui.theme.LocalLook
 import com.crome.freshrss.ui.theme.card
 import com.crome.freshrss.ui.theme.ink
 import com.crome.freshrss.ui.theme.searchPill
@@ -134,11 +137,11 @@ fun HomeScreen(
     val listScope = rememberCoroutineScope()
 
     val scheme = MaterialTheme.colorScheme
-    val canvas = scheme.canvas()
     val ink = scheme.ink()
 
     Scaffold(
-        containerColor = canvas,
+        modifier = Modifier.canvasBackground(),
+        containerColor = Color.Transparent,
         contentColor = ink,
         topBar = {
             SearchPill(
@@ -430,8 +433,7 @@ private fun SwipeableArticleRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 20.dp, end = 8.dp, top = 3.dp, bottom = 3.dp)
-            .shadow(4.dp, CardShape)
-            .clip(CardShape),
+            .cardSurface(elevation = 4.dp),
         state = dismissState,
         backgroundContent = {
             val dir = dismissState.dismissDirection
@@ -647,9 +649,7 @@ private fun FeedHeaderRow(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
-            .shadow(8.dp, CardShape)
-            .clip(CardShape)
-            .background(scheme.card())
+            .cardSurface()
             .combinedClickable(onClick = onClick, onLongClick = onToggleRead)
             .padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -760,7 +760,8 @@ private fun ArticleRow(
     onToggleStar: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val bg = if (selected) scheme.primaryContainer else scheme.card()
+    // The card surface comes from the swipe box (cardSurface); only selection paints here.
+    val bg = if (selected) scheme.primaryContainer else Color.Transparent
     Row(
         Modifier
             .fillMaxWidth()
@@ -908,7 +909,7 @@ private fun HomeFooter(
     val scheme = MaterialTheme.colorScheme
     Column(
         Modifier
-            .background(scheme.canvas())
+            .background(if (LocalLook.current.glass) scheme.card().copy(alpha = 0.5f) else scheme.canvas())
             .navigationBarsPadding(),
     ) {
         HorizontalDivider(color = scheme.outlineVariant)

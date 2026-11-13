@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -123,11 +124,7 @@ fun SettingsSheet(
                 Text(
                     it,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (it.startsWith("OK")) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
+                    color = testResultColor(it),
                     maxLines = 3,
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 6.dp),
                 )
@@ -404,7 +401,7 @@ private fun SaveBar(
             Text(
                 it,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (it.startsWith("OK")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                color = testResultColor(it),
                 modifier = Modifier.padding(bottom = 8.dp),
                 maxLines = 3,
             )
@@ -479,4 +476,11 @@ private fun PaletteSwatch(palette: AppPalette) {
             }
         }
     }
+}
+
+/** Connection test result: bright green when it worked, bright red when it didn't. */
+private fun testResultColor(result: String): Color = when {
+    result.startsWith("OK") -> Color(0xFF22C55E)
+    result.startsWith("Connecting") -> Color.Unspecified // still running: normal text
+    else -> Color(0xFFFF3B3B)
 }
