@@ -123,6 +123,9 @@ import java.util.Locale
 /** Width ≥ this (dp) → list + reading pane (tablet landscape). */
 const val DUAL_PANE_MIN_WIDTH_DP = 840
 
+/** Widest the list and article text get on big screens (dp). */
+const val MAX_CONTENT_WIDTH_DP = 720
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
@@ -385,11 +388,21 @@ fun HomeScreen(
                 }
             }
         } else {
-            listColumn(
+            // Portrait tablets, Fold cover screens, DeX windows: keep cards and
+            // text at a readable width, centered.
+            Box(
                 Modifier
                     .fillMaxSize()
                     .padding(padding),
-            )
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                listColumn(
+                    Modifier
+                        .fillMaxHeight()
+                        .widthIn(max = MAX_CONTENT_WIDTH_DP.dp)
+                        .fillMaxWidth(),
+                )
+            }
         }
     }
 }

@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import androidx.compose.foundation.layout.widthIn
+import com.crome.freshrss.ui.home.MAX_CONTENT_WIDTH_DP
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.Checkbox
@@ -113,10 +115,17 @@ fun ArticleContent(
     showInlineActions: Boolean = false,
 ) {
     val context = LocalContext.current
-    Column(
+    // Centered at a readable width on tablets (the scroll still spans the pane).
+    Box(
         modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+    Column(
+        Modifier
+            .widthIn(max = MAX_CONTENT_WIDTH_DP.dp)
+            .fillMaxWidth()
             .padding(16.dp),
     ) {
         if (showInlineActions) {
@@ -270,6 +279,7 @@ fun ArticleContent(
         }
         val pageHtml = (page as? PageState.Ready)?.html.takeIf { webPage }
         ArticleBody(article = article, html = pageHtml ?: article.html)
+    }
     }
 }
 

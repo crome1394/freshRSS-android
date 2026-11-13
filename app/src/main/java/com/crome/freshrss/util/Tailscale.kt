@@ -101,8 +101,12 @@ object Tailscale {
         } catch (_: SecurityException) {
         }
         return try {
+            // FLAG_INCLUDE_STOPPED_PACKAGES: reach Tailscale even after the
+            // system force-stopped it (Samsung "deep sleeping apps").
             context.sendBroadcast(
-                Intent(action).setComponent(ComponentName(PACKAGE, RECEIVER)),
+                Intent(action)
+                    .setComponent(ComponentName(PACKAGE, RECEIVER))
+                    .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES),
             )
             isInstalled(context)
         } catch (_: SecurityException) {

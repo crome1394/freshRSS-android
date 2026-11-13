@@ -45,7 +45,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -129,9 +129,11 @@ fun SettingsSheet(
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 6.dp),
                 )
             }
-            PrimaryTabRow(
+            // Scrolls when the tabs don't fit (large font sizes, narrow phones).
+            PrimaryScrollableTabRow(
                 selectedTabIndex = pager.currentPage,
                 containerColor = MaterialTheme.colorScheme.surface,
+                edgePadding = 12.dp,
             ) {
                 SettingsTab.entries.forEachIndexed { i, tab ->
                     Tab(
