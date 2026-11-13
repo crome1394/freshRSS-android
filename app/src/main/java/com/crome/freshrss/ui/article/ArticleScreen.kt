@@ -39,6 +39,7 @@ fun ArticleScreen(
             vm.markRead(articleId)
         }
     }
+    LaunchedEffect(articleId) { vm.ensurePage(articleId) }
 
     Scaffold(
         topBar = {
@@ -94,6 +95,11 @@ fun ArticleScreen(
             writable = state.writable,
             onToggleStar = { vm.toggleStar(article.id) },
             onToggleRead = { vm.toggleRead(article.id) },
+            webPage = state.wantsWebPage(article),
+            page = state.pages[article.id],
+            alwaysWebPage = article.displayCategory in state.webPageFeeds,
+            onToggleWebPage = { vm.toggleWebPage(article.id) },
+            onAlwaysWebPage = { vm.setWebPageForFeed(article.id, it) },
             modifier = Modifier.padding(padding),
             showInlineActions = false,
         )

@@ -450,6 +450,11 @@ fun HomeScreen(
                             onToggleStar = { vm.toggleStar(selected.id) },
                             onToggleRead = { vm.toggleRead(selected.id) },
                             showInlineActions = true,
+                            webPage = state.wantsWebPage(selected),
+                            page = state.pages[selected.id],
+                            alwaysWebPage = selected.displayCategory in state.webPageFeeds,
+                            onToggleWebPage = { vm.toggleWebPage(selected.id) },
+                            onAlwaysWebPage = { vm.setWebPageForFeed(selected.id, it) },
                         )
                     } else {
                         ArticleEmptyPane()

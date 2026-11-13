@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.crome.freshrss.data.model.FreshRssConfig
 import com.crome.freshrss.data.model.ReadScope
@@ -31,6 +32,8 @@ class SettingsRepository(context: Context) {
         /** @deprecated plaintext — migrated to [SecureSecrets]. Kept only for one-time migrate. */
         val API_PASSWORD_LEGACY = stringPreferencesKey("api_password")
         val READ_SCOPE = stringPreferencesKey("read_scope")
+        /** Feed titles whose articles always open as the web page view. */
+        val WEB_PAGE_FEEDS = stringSetPreferencesKey("web_page_feeds")
         val ITEM_LIMIT = intPreferencesKey("item_limit")
         val PER_FEED_LIMIT = intPreferencesKey("per_feed_limit")
         /**
@@ -227,6 +230,18 @@ class SettingsRepository(context: Context) {
     suspend fun setThemeMode(mode: AppThemeMode) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.THEME_MODE] = mode.storageValue
+        }
+    }
+
+    /** Feeds set to "Always web page" (by feed title, like the list sections). */
+    val webPageFeeds: Flow<Set<String>> = appContext.dataStore.data.map { prefs ->
+        prefs[Keys.WEB_PAGE_FEEDS] ?: emptySet()
+    }
+
+    suspend fun setWebPageFeed(feedTitle: String, always: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            val cur = prefs[Keys.WEB_PAGE_FEEDS] ?: emptySet()
+            prefs[Keys.WEB_PAGE_FEEDS] = if (always) cur + feedTitle else cur - feedTitle
         }
     }
 }

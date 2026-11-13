@@ -4,6 +4,10 @@ import android.content.Context
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import androidx.compose.material.icons.automirrored.filled.Article
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material3.Checkbox
+import com.crome.freshrss.ui.home.PageState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
@@ -98,6 +102,13 @@ fun ArticleContent(
     /** Read ↔ unread. */
     onToggleRead: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Show the article's web page instead of the feed text. */
+    webPage: Boolean = false,
+    page: PageState? = null,
+    /** This feed always opens as the web page (saved). */
+    alwaysWebPage: Boolean = false,
+    onToggleWebPage: () -> Unit = {},
+    onAlwaysWebPage: (Boolean) -> Unit = {},
     /** When true, show star/mark-read in a top action row (tablet pane). */
     showInlineActions: Boolean = false,
 ) {
@@ -187,6 +198,19 @@ fun ArticleContent(
                 Icon(Icons.Default.ContentCopy, contentDescription = null)
                 Text("  Copy link", modifier = Modifier.padding(start = 4.dp))
             }
+            FilledTonalButton(
+                onClick = onToggleWebPage,
+                enabled = SafeUrls.isSafeHttpUrl(browserUrl),
+            ) {
+                Icon(
+                    if (webPage) Icons.AutoMirrored.Filled.Article else Icons.Default.Language,
+                    contentDescription = null,
+                )
+                Text(
+                    if (webPage) "  Feed text" else "  Web page",
+                    modifier = Modifier.padding(start = 4.dp),
+                )
+            }
             if (article.isVideo || article.isAudio) {
                 FilledTonalButton(
                     onClick = { SafeUrls.openWithChooser(context, playUrl, title = "Open with") },
@@ -217,7 +241,35 @@ fun ArticleContent(
             )
         }
 
-        ArticleBody(article = article)
+        if (webPage || alwaysWebPage) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onAlwaysWebPage(!alwaysWebPage) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = alwaysWebPage, onCheckedChange = onAlwaysWebPage)
+                Text("Always web page for this feed", style = MaterialTheme.typography.bodyMedium)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
+        val pageNote = when {
+            !webPage -> null
+            page is PageState.Loading || page == null -> "Loading the web page…"
+            page is PageState.Failed -> page.message + " Showing the feed text."
+            else -> null
+        }
+        if (pageNote != null) {
+            Text(
+                pageNote,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+        }
+        val pageHtml = (page as? PageState.Ready)?.html.takeIf { webPage }
+        ArticleBody(article = article, html = pageHtml ?: article.html)
     }
 }
 
@@ -272,10 +324,9 @@ fun copyLink(context: Context, url: String) {
  * Falls back to the plain text when there is no HTML.
  */
 @Composable
-private fun ArticleBody(article: Article) {
+private fun ArticleBody(article: Article, html: String) {
     val context = LocalContext.current
     val linkColor = MaterialTheme.colorScheme.primary
-    val html = article.html
     if (html.isBlank()) {
         Text(
             article.text.ifBlank { article.summary }.ifBlank { "(no content — open in browser)" },

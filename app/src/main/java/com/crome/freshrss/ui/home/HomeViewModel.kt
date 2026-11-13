@@ -17,6 +17,8 @@ import com.crome.freshrss.data.offline.toClientMode
 import com.crome.freshrss.data.offline.toReadScope
 import com.crome.freshrss.data.prefs.SettingsRepository
 import com.crome.freshrss.data.remote.FreshRssClient
+import com.crome.freshrss.data.remote.PageFetcher
+import com.crome.freshrss.data.remote.PageResult
 import com.crome.freshrss.util.ServerUrl
 import com.crome.freshrss.widget.FreshRssWidgetUpdater
 import kotlinx.coroutines.CancellationException
@@ -75,7 +77,17 @@ data class HomeUiState(
     val dateFilter: DateFilter = DateFilter.ALL,
     /** Selected article for tablet dual-pane reader (null = empty pane). */
     val selectedArticleId: String? = null,
+    /** Feed titles that always open as the web page view (saved). */
+    val webPageFeeds: Set<String> = emptySet(),
+    /** Articles the user switched to (or away from) the web page view this session. */
+    val webPageToggled: Map<String, Boolean> = emptyMap(),
+    /** Web page view per article id; kept only while the app runs. */
+    val pages: Map<String, PageState> = emptyMap(),
 ) {
+    /** True when [article] should show its web page instead of the feed text. */
+    fun wantsWebPage(article: Article): Boolean =
+        webPageToggled[article.id] ?: (article.displayCategory in webPageFeeds)
+
     /** True when client-side filters narrow the loaded list. */
     val hasClientFilters: Boolean
         get() = mediaFilter != MediaFilter.NONE ||
@@ -270,6 +282,13 @@ private fun appendDateGroups(
     }
 }
 
+/** Web page view of one article. */
+sealed class PageState {
+    data object Loading : PageState()
+    data class Ready(val html: String) : PageState()
+    data class Failed(val message: String) : PageState()
+}
+
 sealed class ListRow {
     data class Header(
         val category: String,
@@ -401,6 +420,10 @@ class HomeViewModel(
 ) : AndroidViewModel(application) {
 
     private val offline = OfflineCache(application.applicationContext)
+    private val pageFetcher = PageFetcher()
+
+    /** One page fetch at a time: a new one cancels the last. */
+    private var pageJob: Job? = null
 
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
@@ -454,6 +477,11 @@ class HomeViewModel(
         viewModelScope.launch {
             settings.allowCleartextHttp.collect { allow ->
                 _state.update { it.copy(allowCleartextHttp = allow) }
+            }
+        }
+        viewModelScope.launch {
+            settings.webPageFeeds.collect { feeds ->
+                _state.update { it.copy(webPageFeeds = feeds) }
             }
         }
         viewModelScope.launch {
@@ -914,6 +942,7 @@ class HomeViewModel(
 
     fun selectArticle(id: String) {
         _state.update { it.copy(selectedArticleId = id) }
+        ensurePage(id)
         val a = articleById(id)
         if (a != null && _state.value.writable && !a.isRead) {
             markRead(id)
@@ -923,6 +952,56 @@ class HomeViewModel(
     fun clearArticleSelection() {
         _state.update { it.copy(selectedArticleId = null) }
     }
+
+    /** Web page ↔ feed text for one article. */
+    fun toggleWebPage(id: String) {
+        val a = articleById(id) ?: return
+        val want = !_state.value.wantsWebPage(a)
+        _state.update { it.copy(webPageToggled = it.webPageToggled + (id to want)) }
+        if (want) ensurePage(id)
+    }
+
+    /** "Always web page" for the article's feed (saved). */
+    fun setWebPageForFeed(id: String, always: Boolean) {
+        val a = articleById(id) ?: return
+        _state.update { it.copy(webPageToggled = it.webPageToggled - id) }
+        viewModelScope.launch {
+            settings.setWebPageFeed(a.displayCategory, always)
+            if (always) ensurePage(id, force = true)
+        }
+    }
+
+    /**
+     * Fetch the article's page when its view wants it and it is not loaded.
+     * Called when an article opens, so "Always web page" feeds load by themselves.
+     */
+    fun ensurePage(id: String, force: Boolean = false) {
+        val a = articleById(id) ?: return
+        val s = _state.value
+        if (!force && !s.wantsWebPage(a)) return
+        when (s.pages[id]) {
+            is PageState.Ready, PageState.Loading -> return
+            else -> Unit
+        }
+        pageJob?.cancel()
+        _state.update { st ->
+            // Drop a page left loading by a cancelled fetch.
+            val pages = st.pages.filterValues { it !is PageState.Loading }
+            st.copy(pages = trimPages(pages) + (id to PageState.Loading))
+        }
+        pageJob = viewModelScope.launch {
+            val result = pageFetcher.fetch(a.url)
+            val page = when (result) {
+                is PageResult.Ok -> PageState.Ready(result.html)
+                is PageResult.Failed -> PageState.Failed(result.message)
+            }
+            _state.update { it.copy(pages = it.pages + (id to page)) }
+        }
+    }
+
+    private fun trimPages(pages: Map<String, PageState>): Map<String, PageState> =
+        if (pages.size < PAGE_CACHE) pages else pages.entries.drop(pages.size - PAGE_CACHE + 1)
+            .associate { it.key to it.value }
 
     fun markRead(id: String) = setReadState(id, read = true)
 
@@ -1085,6 +1164,9 @@ class HomeViewModel(
     }
 
     companion object {
+        /** Web pages kept in memory at once. */
+        private const val PAGE_CACHE = 20
+
         fun factory(
             application: Application,
             client: FreshRssClient,
