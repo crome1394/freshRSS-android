@@ -35,6 +35,8 @@ data class SettingsUiState(
     val allowCleartextHttp: Boolean = false,
     /** Show Tailscale shortcut in the title bar. */
     val showTailscaleButton: Boolean = true,
+    /** On mobile data, connect Tailscale for each refresh and disconnect after. */
+    val autoTailscale: Boolean = true,
     /** System / Light / Dark */
     val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     val palette: AppPalette = AppPalette.TOKYO_NIGHT,
@@ -68,6 +70,7 @@ class SettingsViewModel(
                     expandFiltersOnStart = settings.expandFiltersOnStart.first(),
                     allowCleartextHttp = settings.allowCleartextHttp.first(),
                     showTailscaleButton = settings.showTailscaleButton.first(),
+                    autoTailscale = settings.autoTailscale.first(),
                     themeMode = settings.themeMode.first(),
                     palette = settings.palette.first(),
                 )
@@ -104,6 +107,9 @@ class SettingsViewModel(
     }
     fun updateShowTailscaleButton(v: Boolean) = _state.update {
         it.copy(showTailscaleButton = v, saved = false)
+    }
+    fun updateAutoTailscale(v: Boolean) = _state.update {
+        it.copy(autoTailscale = v, saved = false)
     }
 
     /** Applies immediately so the UI previews the choice before Save. */
@@ -148,6 +154,7 @@ class SettingsViewModel(
             settings.setExpandFiltersOnStart(s.expandFiltersOnStart)
             settings.setAllowCleartextHttp(s.allowCleartextHttp)
             settings.setShowTailscaleButton(s.showTailscaleButton)
+            settings.setAutoTailscale(s.autoTailscale)
             settings.setThemeMode(s.themeMode)
             client.config = cfg
             _state.update {

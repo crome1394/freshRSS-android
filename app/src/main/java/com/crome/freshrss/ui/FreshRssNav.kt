@@ -26,12 +26,13 @@ import com.crome.freshrss.ui.home.DUAL_PANE_MIN_WIDTH_DP
 import com.crome.freshrss.ui.home.HomeScreen
 import com.crome.freshrss.ui.home.HomeViewModel
 import com.crome.freshrss.ui.settings.SettingsScreen
+import com.crome.freshrss.ui.settings.SettingsSheet
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.crome.freshrss.ui.settings.SettingsViewModel
 import kotlinx.coroutines.flow.first
 
 object Routes {
     const val HOME = "home"
-    const val SETTINGS = "settings"
     const val SETUP = "setup"
     const val ARTICLE = "article/{id}"
     fun article(id: String) = "article/$id"
@@ -74,6 +75,12 @@ fun FreshRssNav(
         return
     }
 
+    // Settings open as a bottom sheet over whatever screen is showing.
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    if (settingsOpen) {
+        SettingsSheet(vm = settingsVm, onDismiss = { settingsOpen = false })
+    }
+
     NavHost(
         navController = nav,
         startDestination = if (needsSetup) Routes.SETUP else Routes.HOME,
@@ -81,18 +88,12 @@ fun FreshRssNav(
         composable(Routes.HOME) {
             HomeScreen(
                 vm = homeVm,
-                onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                onOpenSettings = { settingsOpen = true },
                 onOpenArticle = { id ->
                     // Phone / narrow: full-screen article route
                     nav.navigate(Routes.article(java.net.URLEncoder.encode(id, "UTF-8")))
                 },
                 dualPane = dualPane,
-            )
-        }
-        composable(Routes.SETTINGS) {
-            SettingsScreen(
-                vm = settingsVm,
-                onBack = { nav.popBackStack() },
             )
         }
         composable(Routes.SETUP) {

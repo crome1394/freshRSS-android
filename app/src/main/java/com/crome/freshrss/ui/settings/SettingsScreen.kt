@@ -37,6 +37,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -51,7 +64,114 @@ import com.crome.freshrss.ui.theme.AppPalette
 import com.crome.freshrss.ui.theme.scheme
 import com.crome.freshrss.ui.theme.AppThemeMode
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+/** Settings tabs, swiped left and right inside the sheet. */
+private enum class SettingsTab(val label: String) {
+    SERVER("Server"),
+    READING("Reading"),
+    LOOK("Look"),
+    TAILSCALE("Tailscale"),
+}
+
+/**
+ * Settings as a bottom sheet over the list. Drag the handle to resize it
+ * (half ↔ full height) or down to close. Tabs swipe sideways. Theme and colors
+ * apply at once; the rest waits for Save.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsSheet(
+    vm: SettingsViewModel,
+    onDismiss: () -> Unit,
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val pager = rememberPagerState { SettingsTab.entries.size }
+    val scope = rememberCoroutineScope()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            Modifier
+                .fillMaxHeight()
+                .imePadding(),
+        ) {
+            // Title row keeps Test and Save in reach at half height.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 12.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Settings",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { vm.testConnection() }, enabled = !state.testing) {
+                    Text(if (state.testing) "Testing…" else "Test")
+                }
+                Spacer(Modifier.width(4.dp))
+                Button(onClick = { vm.save() }) {
+                    Text(if (state.saved) "Saved" else "Save")
+                }
+            }
+            state.testResult?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (it.startsWith("OK")) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                    maxLines = 3,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 6.dp),
+                )
+            }
+            PrimaryTabRow(
+                selectedTabIndex = pager.currentPage,
+                containerColor = MaterialTheme.colorScheme.surface,
+            ) {
+                SettingsTab.entries.forEachIndexed { i, tab ->
+                    Tab(
+                        selected = pager.currentPage == i,
+                        onClick = { scope.launch { pager.animateScrollToPage(i) } },
+                        text = { Text(tab.label, maxLines = 1) },
+                    )
+                }
+            }
+            HorizontalPager(
+                state = pager,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+            ) { page ->
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                ) {
+                    when (SettingsTab.entries[page]) {
+                        SettingsTab.SERVER -> ServerSettings(state, vm)
+                        SettingsTab.READING -> ReadingSettings(state, vm)
+                        SettingsTab.LOOK -> LookSettings(state, vm)
+                        SettingsTab.TAILSCALE -> TailscaleSettings(state, vm)
+                    }
+                }
+            }
+            Spacer(Modifier.navigationBarsPadding())
+        }
+    }
+}
+
+/** First run: just the server fields, full screen, until a server is saved. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     vm: SettingsViewModel,
@@ -61,7 +181,6 @@ fun SettingsScreen(
     onSetupComplete: () -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -83,257 +202,227 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
-            if (firstRun) {
-                Text(
-                    "Welcome",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Enter your self-hosted FreshRSS server. " +
-                        "URLs default to HTTPS. Enable “Allow insecure HTTP” only for trusted LAN/VPN.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(16.dp))
-            } else {
-                Text(
-                    "Same fields as ~/.config/quickshell/secrets/freshrss.env",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(16.dp))
-            }
-
-            OutlinedTextField(
-                value = state.baseUrl,
-                onValueChange = vm::updateBaseUrl,
-                label = { Text("FRESHRSS_BASE_URL") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("https://freshrss.example.com") },
-                supportingText = {
-                    Text(
-                        "Required. Prefer https://. Bare hosts get https:// automatically.",
-                    )
-                },
+            Text("Welcome", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Enter your self-hosted FreshRSS server. " +
+                    "URLs default to HTTPS. Enable “Allow insecure HTTP” only for trusted LAN/VPN.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = state.user,
-                onValueChange = vm::updateUser,
-                label = { Text("FRESHRSS_USER") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                supportingText = { Text("e.g. admin or Javier") },
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = state.apiPassword,
-                onValueChange = vm::updatePassword,
-                label = { Text("FRESHRSS_API_PASSWORD") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                supportingText = {
-                    Text("Profile → API password (not the web form password).")
-                },
-            )
-
-            Spacer(Modifier.height(20.dp))
-            HorizontalDivider()
             Spacer(Modifier.height(16.dp))
-            Text("Security", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Allow insecure HTTP")
-                    Text(
-                        "Permit http:// server URLs (LAN / Tailscale). " +
-                            "Off by default — credentials should travel over HTTPS when possible.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(
-                    checked = state.allowCleartextHttp,
-                    onCheckedChange = vm::updateAllowCleartextHttp,
-                )
-            }
+            ServerSettings(state, vm)
+            Spacer(Modifier.height(16.dp))
+            SaveBar(
+                state = state,
+                vm = vm,
+                saveLabel = "Save & continue",
+                onSaved = if (firstRun) onSetupComplete else null,
+            )
+        }
+    }
+}
 
-            if (!firstRun) {
-                Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = state.historyDays.toString(),
-                    onValueChange = vm::updateHistoryDays,
-                    label = { Text("History (days)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    supportingText = {
-                        Text(
-                            "Default 30. Downloads articles from the last N days and " +
-                                "overrides Filters → per-feed / max article limits. " +
-                                "Set to 0 to use those steppers instead.",
-                        )
-                    },
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = state.itemLimit.toString(),
-                    onValueChange = vm::updateItemLimit,
-                    label = { Text("Item limit (Unread/Starred, when history = 0)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    enabled = state.historyDays == 0,
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = state.perFeedLimit.toString(),
-                    onValueChange = vm::updatePerFeed,
-                    label = { Text("Per-feed limit (All/Read, when history = 0)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    enabled = state.historyDays == 0,
-                )
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(bottom = 8.dp),
+    )
+}
 
-                Spacer(Modifier.height(24.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(16.dp))
-                Text("Appearance", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Theme",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    "Light or dark. System follows your phone setting.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    for (mode in AppThemeMode.entries) {
-                        FilterChip(
-                            selected = state.themeMode == mode,
-                            onClick = { vm.updateThemeMode(mode) },
-                            label = { Text(mode.label) },
-                        )
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-                Text("Colors", style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    "Each has a light and a dark version. Wallpaper uses your phone's " +
-                        "colors (Android 12+).",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    for (p in AppPalette.entries) {
-                        if (p == AppPalette.DYNAMIC && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) continue
-                        FilterChip(
-                            selected = state.palette == p,
-                            onClick = { vm.updatePalette(p) },
-                            label = { Text(p.label) },
-                            leadingIcon = { PaletteSwatch(p) },
-                        )
-                    }
-                }
+@Composable
+private fun ServerSettings(state: SettingsUiState, vm: SettingsViewModel) {
+    OutlinedTextField(
+        value = state.baseUrl,
+        onValueChange = vm::updateBaseUrl,
+        label = { Text("Server URL") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text("https://freshrss.example.com") },
+        supportingText = { Text("A bare host gets https:// automatically.") },
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = state.user,
+        onValueChange = vm::updateUser,
+        label = { Text("User") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = state.apiPassword,
+        onValueChange = vm::updatePassword,
+        label = { Text("API password") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        supportingText = { Text("FreshRSS → Profile → API password (not your login password).") },
+    )
+    Spacer(Modifier.height(16.dp))
+    LayoutSwitchRow(
+        title = "Allow insecure HTTP",
+        subtitle = "Permit http:// server URLs (LAN / Tailscale only). " +
+            "Credentials should travel over HTTPS when possible.",
+        checked = state.allowCleartextHttp,
+        onCheckedChange = vm::updateAllowCleartextHttp,
+    )
+}
 
-                Spacer(Modifier.height(24.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(16.dp))
-                Text("Layout", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                LayoutSwitchRow(
-                    title = "Title bar at bottom",
-                    subtitle = "Move FreshRSS title, refresh, and settings to the bottom",
-                    checked = state.chromeAtBottom,
-                    onCheckedChange = vm::updateChromeAtBottom,
-                )
-                Spacer(Modifier.height(12.dp))
-                LayoutSwitchRow(
-                    title = "Filter chips at bottom",
-                    subtitle = "Move Unread / All / Read / Starred / Video / Sound chips " +
-                        "to the bottom, just above the title bar when it is also bottom-aligned",
-                    checked = state.scopeChipsAtBottom,
-                    onCheckedChange = vm::updateScopeChipsAtBottom,
-                )
-                Spacer(Modifier.height(12.dp))
-                LayoutSwitchRow(
-                    title = "Filters panel at bottom",
-                    subtitle = "Move the Filters expand/collapse section (dates, search, download limits) " +
-                        "to the bottom of the article list",
-                    checked = state.filtersAtBottom,
-                    onCheckedChange = vm::updateFiltersAtBottom,
-                )
-                Spacer(Modifier.height(12.dp))
-                LayoutSwitchRow(
-                    title = "Expand filters on start",
-                    subtitle = "Open the Filters panel when the app launches. " +
-                        "Toggling Filters on the home screen only affects the current session.",
-                    checked = state.expandFiltersOnStart,
-                    onCheckedChange = vm::updateExpandFiltersOnStart,
-                )
-                Spacer(Modifier.height(12.dp))
-                LayoutSwitchRow(
-                    title = "Show Tailscale button",
-                    subtitle = "Key icon in the title bar: tap to connect or disconnect Tailscale, long-press to open the app",
-                    checked = state.showTailscaleButton,
-                    onCheckedChange = vm::updateShowTailscaleButton,
-                )
-            }
+@Composable
+private fun ReadingSettings(state: SettingsUiState, vm: SettingsViewModel) {
+    SectionTitle("Download")
+    OutlinedTextField(
+        value = state.historyDays.toString(),
+        onValueChange = vm::updateHistoryDays,
+        label = { Text("History (days)") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        supportingText = {
+            Text("Articles from the last N days (default 30). 0 = use the limits below.")
+        },
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = state.itemLimit.toString(),
+        onValueChange = vm::updateItemLimit,
+        label = { Text("Max articles (Unread / Starred)") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        enabled = state.historyDays == 0,
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = state.perFeedLimit.toString(),
+        onValueChange = vm::updatePerFeed,
+        label = { Text("Per feed (All / Read)") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        enabled = state.historyDays == 0,
+    )
+    Spacer(Modifier.height(20.dp))
+    SectionTitle("Filters")
+    LayoutSwitchRow(
+        title = "Open Filters on start",
+        subtitle = "Show the date and download filters when the app opens.",
+        checked = state.expandFiltersOnStart,
+        onCheckedChange = vm::updateExpandFiltersOnStart,
+    )
+}
 
-            Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = {
-                    if (firstRun) {
-                        vm.save(onSuccess = onSetupComplete)
-                    } else {
-                        vm.save()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    when {
-                        firstRun -> "Save & continue"
-                        state.saved -> "Saved"
-                        else -> "Save"
-                    },
-                )
-            }
-            Spacer(Modifier.height(8.dp))
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LookSettings(state: SettingsUiState, vm: SettingsViewModel) {
+    SectionTitle("Theme")
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (mode in AppThemeMode.entries) {
+            FilterChip(
+                selected = state.themeMode == mode,
+                onClick = { vm.updateThemeMode(mode) },
+                label = { Text(mode.label) },
+            )
+        }
+    }
+    Spacer(Modifier.height(20.dp))
+    SectionTitle("Colors")
+    Text(
+        "Each has a light and a dark version. Wallpaper uses your phone's colors (Android 12+).",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(8.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (p in AppPalette.entries) {
+            if (p == AppPalette.DYNAMIC && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) continue
+            FilterChip(
+                selected = state.palette == p,
+                onClick = { vm.updatePalette(p) },
+                label = { Text(p.label) },
+                leadingIcon = { PaletteSwatch(p) },
+            )
+        }
+    }
+    Spacer(Modifier.height(20.dp))
+    SectionTitle("Layout")
+    LayoutSwitchRow(
+        title = "Scope chips at bottom",
+        subtitle = "Unread / All / Read / Starred / Video / Sound sit just above the footer.",
+        checked = state.scopeChipsAtBottom,
+        onCheckedChange = vm::updateScopeChipsAtBottom,
+    )
+    Spacer(Modifier.height(12.dp))
+    LayoutSwitchRow(
+        title = "Filters at bottom",
+        subtitle = "The date and download filters open above the footer.",
+        checked = state.filtersAtBottom,
+        onCheckedChange = vm::updateFiltersAtBottom,
+    )
+}
+
+@Composable
+private fun TailscaleSettings(state: SettingsUiState, vm: SettingsViewModel) {
+    LayoutSwitchRow(
+        title = "Show Tailscale button",
+        subtitle = "Key in the footer: tap to connect or disconnect, long-press to open Tailscale.",
+        checked = state.showTailscaleButton,
+        onCheckedChange = vm::updateShowTailscaleButton,
+    )
+    Spacer(Modifier.height(16.dp))
+    LayoutSwitchRow(
+        title = "Use Tailscale on mobile data",
+        subtitle = "Off Wi-Fi, connect Tailscale to refresh or mark articles, then disconnect " +
+            "after 30 seconds. Leaves a connection you made yourself alone.",
+        checked = state.autoTailscale,
+        onCheckedChange = vm::updateAutoTailscale,
+    )
+    Spacer(Modifier.height(16.dp))
+    Text(
+        "Tailscale must be installed and logged in, with its VPN prompt accepted once.",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** Test connection and Save, with the test result above them. */
+@Composable
+private fun SaveBar(
+    state: SettingsUiState,
+    vm: SettingsViewModel,
+    modifier: Modifier = Modifier,
+    saveLabel: String? = null,
+    onSaved: (() -> Unit)? = null,
+) {
+    Column(modifier.fillMaxWidth()) {
+        state.testResult?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (it.startsWith("OK")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(bottom = 8.dp),
+                maxLines = 3,
+            )
+        }
+        Row(Modifier.fillMaxWidth()) {
             OutlinedButton(
                 onClick = { vm.testConnection() },
-                modifier = Modifier.fillMaxWidth(),
                 enabled = !state.testing,
+                modifier = Modifier.weight(1f),
             ) {
-                Text(if (state.testing) "Testing…" else "Test connection")
+                Text(if (state.testing) "Testing…" else "Test", maxLines = 1)
             }
-            state.testResult?.let {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (it.startsWith("OK")) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
-                )
+            Spacer(Modifier.width(12.dp))
+            Button(
+                onClick = { vm.save(onSuccess = onSaved) },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(saveLabel ?: if (state.saved) "Saved" else "Save", maxLines = 1)
             }
         }
     }
