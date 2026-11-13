@@ -1,0 +1,33 @@
+<p>A reader for your own <a href="https://freshrss.org/">FreshRSS</a> server. Point it at your server on your LAN, over Tailscale, or over HTTPS. No third-party account, no tracking, no ads.</p>
+
+<p><b>Reading</b></p>
+<ul>
+<li>Feeds A–Z with their site icons, grouped by day, as cards with the newest article as a preview</li>
+<li>Unread, All, Read, and Starred; video and audio filters; date filter; search</li>
+<li>Source filter: show only YouTube, Reddit, GitHub, Mastodon, or website feeds</li>
+<li>Full article text with links; images stay links until you tap them, so articles load nothing on their own</li>
+<li>Web page view: fetch an article's page and read just its main text, without comments or share bars</li>
+<li>Play / Listen opens YouTube, NewPipe, Spotify, and similar apps</li>
+</ul>
+
+<p><b>Actions</b></p>
+<ul>
+<li>Swipe to mark read or unread, star, mark a whole feed or day read or unread</li>
+<li>Share and copy links</li>
+</ul>
+
+<p><b>Tailscale</b></p>
+<ul>
+<li>A key button connects and disconnects the Tailscale VPN</li>
+<li>On mobile data, a refresh can connect Tailscale, update, and disconnect again by itself</li>
+</ul>
+
+<p><b>Look</b></p>
+<ul>
+<li>13 color themes, each with a light and a dark version, including Material You</li>
+<li>Settings in a resizable bottom sheet with swipeable tabs</li>
+<li>Two-pane layout on tablets and foldables</li>
+<li>Offline copy of the last list and a one-row home-screen widget</li>
+</ul>
+
+<p>Needs a FreshRSS server with API access enabled and an API password set (Profile → API password). Not an official FreshRSS product.</p>

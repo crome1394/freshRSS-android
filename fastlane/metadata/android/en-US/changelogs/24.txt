@@ -1,0 +1,1 @@
+Source filter (YouTube, Reddit, …), one-row widget, Tailscale disconnects right after a sync, tablet and Fold layout fixes, Samsung large-font and battery-saver fixes, keyboard and text-color fixes.

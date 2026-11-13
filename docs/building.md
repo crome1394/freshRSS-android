@@ -54,10 +54,14 @@ Keep a backup of the keystore. Phones only accept updates signed with the same k
 1. Bump `versionCode` and `versionName` in `app/build.gradle.kts`; add a `CHANGELOG.md` entry.
 2. Build the signed release (above) and check it:
    `apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk`
-3. Tag and publish with the APK attached:
+3. Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` (F-Droid's changelog).
+4. Tag and publish with the APK attached:
 
 ```bash
 cp app/build/outputs/apk/release/app-release.apk FreshRSS-Android-0.8.0.apk
 git tag v0.8.0 && git push origin main v0.8.0
 gh release create v0.8.0 FreshRSS-Android-0.8.0.apk --title "0.8.0" --notes-file notes.md
 ```
+
+5. Check F-Droid would accept it: `sh scripts/verify-reproducible.sh v0.8.0 FreshRSS-Android-0.8.0.apk`
+   (see [F-DROID.md](../F-DROID.md)).

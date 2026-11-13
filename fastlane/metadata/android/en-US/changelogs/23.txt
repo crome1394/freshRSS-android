@@ -1,0 +1,1 @@
+Card layout, web page view, lead pictures, full article text with links, feed icons, whole feed or day read/unread, Tailscale connect/disconnect button and automatic Tailscale on mobile data, 13 color themes, settings bottom sheet with tabs, new icon.

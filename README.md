@@ -61,6 +61,7 @@ Screenshots use made-up demo feeds from [`tools/mock-freshrss.py`](tools/mock-fr
 | [Features](docs/features.md) | Every gesture, button, and setting |
 | [Building](docs/building.md) | Build from source, signing, making a release |
 | [Architecture](ARCHITECTURE.md) | How the app is put together |
+| [F-Droid](F-DROID.md) | Reproducible, upstream-signed F-Droid builds (prepared, not submitted) |
 | [Changelog](CHANGELOG.md) | What changed in each version |
 
 ## Build
