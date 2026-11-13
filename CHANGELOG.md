@@ -19,7 +19,9 @@ Improved:
 - **Settings sheet**: opens from the bottom, resizes (half ↔ full), with swipeable Server / Reading / Look / Tailscale tabs. "Title bar at bottom" is gone (actions live in the footer)
 - **Tailscale on mobile data**: off Wi-Fi, refresh connects Tailscale, updates, and disconnects after 30 s idle (only if the app connected it)
 - **New app icon** with a themed (monochrome) layer
-- **Color themes**: Tokyo Night, Catppuccin, Nord, Gruvbox, Rosé Pine, Solarized, and Wallpaper (Material You), each in light and dark
+- **Color themes**: from the quickshell bar, Liquid amber, Liquid glass, Liquid ice, Ink, Solid dark, and Deep ocean (glass becomes an accent glow behind translucent cards); plus Tokyo Night, Catppuccin, Nord, Gruvbox, Rosé Pine, Solarized, and Wallpaper (Material You). Each has light and dark versions
+- Settings **Test** result is bright green when OK, bright red on failure, and Test connects Tailscale on mobile data too
+- Status bar icons follow the app's light/dark theme
 
 Release:
 

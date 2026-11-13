@@ -31,7 +31,7 @@ HomeViewModel ── FreshRssClient (Fever + Google Reader APIs) ── your Fre
 | `ui/home` | `HomeScreen`, `HomeViewModel` | Feed → day → article list, filters, actions, dual pane |
 | `ui/article` | `ArticleScreen`, `ArticleContent` | Article view: lead picture, HTML body, web page view, buttons |
 | `ui/settings` | `SettingsScreen` (`SettingsSheet`), `SettingsViewModel` | Bottom sheet with Server / Reading / Look / Tailscale tabs (`HorizontalPager`); first-run form |
-| `ui/theme` | `Theme.kt`, `Palettes.kt`, `Surfaces.kt` | Light/dark mode, color palettes, and the card-on-canvas colors and shapes |
+| `ui/theme` | `Theme.kt`, `Palettes.kt`, `Surfaces.kt` | Light/dark mode, palettes (quickshell presets derived from tint/accent/alert), card-on-canvas colors, glass glow and translucent cards (`LocalLook`) |
 | `util` | `HtmlUtils`, `PageExtractor`, `MediaUtils`, `MediaAppLinks`, `SafeUrls`, `ServerUrl`, `Tailscale`, `FeverAuth` | Pure helpers (most have unit tests) |
 | `widget` | Glance widget, updater, state store | Unread count + last updated; pushed by the app, no polling |
 
@@ -84,7 +84,7 @@ first to Tailscale's `AutomationActivity` (newer versions, wakes a stopped app),
 then to `IPNReceiver` as a broadcast (older versions). A `ConnectivityManager`
 callback on VPN transport drives the icon.
 
-`HomeViewModel.viaTailscale { }` wraps every server call. On mobile data (no
+`AutoTailscale` (one per app, in `data/remote`) wraps every server call from the list and the Settings test. On mobile data (no
 Wi-Fi/Ethernet) with the VPN down and the setting on, it connects Tailscale,
 waits up to 15 s for a VPN network plus 1 s for routes and DNS, runs the call,
 and when no call has used the server for 30 s, disconnects (only if it

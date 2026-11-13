@@ -54,7 +54,8 @@ after 30 seconds with no server calls. If you connected Tailscale yourself, it i
 
 ## Settings
 
-The ⚙ button opens a sheet over the list. Drag its handle to resize it (half ↔ full height) or
+The ⚙ button opens a sheet over the list. **Test** shows its result in green (OK) or red
+(failed), and on mobile data it connects Tailscale first like a refresh does. Drag its handle to resize it (half ↔ full height) or
 down to close. Swipe sideways between tabs; **Test** and **Save** stay at the top.
 
 | Tab | Settings |
@@ -71,10 +72,13 @@ Settings → Look:
 | Setting | Options |
 |---|---|
 | Theme | System · Light · Dark |
-| Colors | Tokyo Night · Catppuccin · Nord · Gruvbox · Rosé Pine · Solarized · Wallpaper (Android 12+) |
+| Colors | From the quickshell bar: Liquid amber · Liquid glass · Liquid ice · Ink · Solid dark · Deep ocean. Classics: Tokyo Night · Catppuccin · Nord · Gruvbox · Rosé Pine · Solarized · Wallpaper (Android 12+) |
 | Layout | Scope chips and filters can sit at the top or just above the footer |
 
 On a tablet in landscape (≥ 840 dp wide) the list and the article sit side by side.
+
+Every palette has a light and a dark version. The "liquid" ones (and Ink, Deep ocean) stand in
+for quickshell's glass with a soft accent glow behind translucent cards.
 
 ## Offline and widget
 

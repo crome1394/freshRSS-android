@@ -29,7 +29,7 @@ Coming from 0.7.x? Uninstall it first. 0.8.0 is signed with a new key ([why](doc
 | **Actions** | Swipe read/unread, star, whole feed or day read ↔ unread |
 | **Media** | Play / Listen opens YouTube, NewPipe, Spotify, and similar apps |
 | **Tailscale** | Footer key connects and disconnects the VPN; on mobile data a refresh connects, updates, and disconnects by itself |
-| **Look** | Card layout with a search pill and footer; 7 color themes, each light and dark, including Material You; tablet dual pane |
+| **Look** | Card layout with a search pill and footer; 13 color themes (including the quickshell Liquid and Classic presets and Material You), each light and dark; tablet dual pane |
 | **Settings** | Resizable bottom sheet with swipeable Server / Reading / Look / Tailscale tabs |
 | **Offline** | Last list cached; home-screen widget with the unread count |
 
