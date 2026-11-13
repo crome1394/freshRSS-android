@@ -215,6 +215,8 @@ data class HomeUiState(
                     category = cat,
                     feedId = feed.id,
                     iconUrl = feed.iconUrl,
+                    latestTitle = list.firstOrNull()?.title.orEmpty(),
+                    latestEpoch = list.firstOrNull()?.createdOnTime ?: 0L,
                     unread = loadedUnread,
                     shown = list.size,
                     collapsed = isCollapsed,
@@ -294,6 +296,9 @@ sealed class ListRow {
         val category: String,
         val feedId: Long,
         val iconUrl: String = "",
+        /** Newest article shown under the feed name, like a message preview. */
+        val latestTitle: String = "",
+        val latestEpoch: Long = 0L,
         val unread: Int,
         val shown: Int,
         val collapsed: Boolean,

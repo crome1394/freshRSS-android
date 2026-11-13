@@ -81,6 +81,27 @@ import androidx.compose.ui.draw.clip
 import com.crome.freshrss.util.Tailscale
 import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.AsyncImage
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Dp
+import com.crome.freshrss.ui.theme.CardShape
+import com.crome.freshrss.ui.theme.PillShape
+import com.crome.freshrss.ui.theme.canvas
+import com.crome.freshrss.ui.theme.card
+import com.crome.freshrss.ui.theme.ink
+import com.crome.freshrss.ui.theme.searchPill
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -112,76 +133,33 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     val listScope = rememberCoroutineScope()
 
-    val titleBlock: @Composable () -> Unit = {
-        Column {
-            Text("FreshRSS", fontWeight = FontWeight.Bold)
-            Text(
-                text = buildString {
-                    append("v${BuildConfig.VERSION_NAME} · ")
-                    if (state.isOffline) append("offline · ")
-                    if (state.unread > 0) append("${state.unread} unread · ")
-                    append(
-                        if (state.mode == ClientMode.FEVER && state.writable) "API r/w"
-                        else if (state.mode == ClientMode.FEVER) "API"
-                        else "RSS",
-                    )
-                    if (state.knownFeeds.isNotEmpty()) {
-                        append(" · ${state.knownFeeds.size} feeds")
-                    }
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (state.lastUpdatedEpochMs > 0) {
-                Text(
-                    text = "Updated ${formatLastUpdated(state.lastUpdatedEpochMs)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-
-    val actionButtons: @Composable () -> Unit = {
-        if (state.showTailscaleButton) {
-            TailscaleButton(onConnected = { vm.refresh() })
-        }
-        IconButton(onClick = { vm.refresh() }) {
-            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-        }
-        IconButton(onClick = onOpenSettings) {
-            Icon(Icons.Default.Settings, contentDescription = "Settings")
-        }
-    }
+    val scheme = MaterialTheme.colorScheme
+    val canvas = scheme.canvas()
+    val ink = scheme.ink()
 
     Scaffold(
+        containerColor = canvas,
+        contentColor = ink,
         topBar = {
-            if (!state.chromeAtBottom) {
-                TopAppBar(
-                    title = { titleBlock() },
-                    actions = { actionButtons() },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                )
-            }
+            SearchPill(
+                query = state.searchQuery,
+                onQuery = vm::setSearch,
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 4.dp),
+            )
         },
         bottomBar = {
-            if (state.chromeAtBottom) {
-                BottomAppBar(
-                    actions = {
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(Modifier.weight(1f)) { titleBlock() }
-                            actionButtons()
-                        }
-                    },
-                )
-            }
+            HomeFooter(
+                state = state,
+                onFilters = vm::toggleFiltersExpanded,
+                onCollapseExpand = {
+                    if (state.collapsed.isEmpty()) vm.collapseAll() else vm.expandAll()
+                },
+                onRefresh = { vm.refresh() },
+                onSettings = onOpenSettings,
+                onTailscaleConnected = { vm.refresh() },
+            )
         },
     ) { padding ->
         val scopeChips: @Composable () -> Unit = {
@@ -190,114 +168,36 @@ fun HomeScreen(
                 onSelect = vm::setScope,
                 mediaFilter = state.mediaFilter,
                 onMediaFilter = vm::setMediaFilter,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
             )
         }
 
-        val filtersExpandedBody: @Composable () -> Unit = {
-            Column {
-                // Download steppers only when history mode is off (Settings → History = 0).
-                if (state.historyDays == 0) {
-                    DownloadLimitBar(
-                        scope = state.scope,
-                        itemLimit = state.itemLimit,
-                        perFeedLimit = state.perFeedLimit,
-                        enabled = true,
-                        onNudgePerFeed = vm::nudgePerFeed,
-                        onNudgeItemLimit = vm::nudgeItemLimit,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    )
-                } else {
-                    Text(
-                        "History: last ${state.historyDays} days (Settings).",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    )
-                }
-                DateFilterChips(
-                    selected = state.dateFilter,
-                    onSelect = vm::setDateFilter,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                )
-                OutlinedTextField(
-                    value = state.searchQuery,
-                    onValueChange = vm::setSearch,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                    singleLine = true,
-                    placeholder = { Text("Search title, feed, summary…") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null)
-                    },
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-
-        // Expand / collapse filters (download limits, dates, search).
-        // When docked at bottom, expanded body opens *above* the toggle row.
+        // Filters (footer funnel): date window and download size. Search is the top pill.
         val filtersPanel: @Composable () -> Unit = {
-            Column {
-                if (state.filtersAtBottom) {
-                    AnimatedVisibility(visible = state.filtersExpanded) {
-                        filtersExpandedBody()
-                    }
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { vm.toggleFiltersExpanded() }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        if (state.filtersExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+            AnimatedVisibility(visible = state.filtersExpanded) {
+                Column(Modifier.padding(vertical = 4.dp)) {
+                    DateFilterChips(
+                        selected = state.dateFilter,
+                        onSelect = vm::setDateFilter,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
                     )
-                    Spacer(Modifier.width(6.dp))
-                    Icon(
-                        Icons.Default.Tune,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.height(18.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        if (state.filtersExpanded) "Hide filters"
-                        else "Filters",
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    // Active scope / media chip label (high-contrast on light and dark themes).
-                    Text(
-                        text = state.activeChipLabel,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (state.dateFilter != DateFilter.ALL) {
-                        Text(
-                            state.dateFilter.label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(end = 8.dp),
+                    if (state.historyDays == 0) {
+                        DownloadLimitBar(
+                            scope = state.scope,
+                            itemLimit = state.itemLimit,
+                            perFeedLimit = state.perFeedLimit,
+                            enabled = true,
+                            onNudgePerFeed = vm::nudgePerFeed,
+                            onNudgeItemLimit = vm::nudgeItemLimit,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                         )
-                    }
-                    IconButton(onClick = {
-                        if (state.collapsed.isEmpty()) vm.collapseAll() else vm.expandAll()
-                    }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Expand/collapse feeds")
-                    }
-                }
-                if (!state.filtersAtBottom) {
-                    AnimatedVisibility(visible = state.filtersExpanded) {
-                        filtersExpandedBody()
+                    } else {
+                        Text(
+                            "Downloading the last ${state.historyDays} days (Settings).",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                        )
                     }
                 }
             }
@@ -312,6 +212,13 @@ fun HomeScreen(
 
         val listColumn: @Composable (Modifier) -> Unit = { listMod ->
             Column(listMod) {
+                Text(
+                    state.activeChipLabel,
+                    modifier = Modifier.padding(start = 20.dp, top = 8.dp, end = 16.dp, bottom = 2.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = ink,
+                )
                 if (!state.scopeChipsAtBottom) {
                     scopeChips()
                 }
@@ -320,16 +227,12 @@ fun HomeScreen(
                     filtersPanel()
                 }
 
-                if (state.statusLine.isNotBlank() || state.error != null) {
+                if (state.error != null) {
                     Text(
-                        text = state.error ?: state.statusLine,
+                        text = state.error.orEmpty(),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (state.error != null) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -357,7 +260,7 @@ fun HomeScreen(
                     } else {
                         LazyColumn(
                             state = listState,
-                            contentPadding = PaddingValues(bottom = 24.dp),
+                            contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp),
                             modifier = Modifier.fillMaxSize(),
                         ) {
                             items(
@@ -417,10 +320,10 @@ fun HomeScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(
-                                            start = 36.dp,
+                                            start = 28.dp,
                                             end = 16.dp,
-                                            top = 6.dp,
-                                            bottom = 10.dp,
+                                            top = 4.dp,
+                                            bottom = 8.dp,
                                         ),
                                     )
                                 }
@@ -429,8 +332,7 @@ fun HomeScreen(
                     }
                 }
 
-                // Bottom docking order (above title bar when chrome is bottom):
-                // article list → Filters panel → scope chips → (Scaffold bottomBar)
+                // Bottom docking order: article list → Filters panel → scope chips → footer
                 if (state.filtersAtBottom) {
                     filtersPanel()
                 }
@@ -525,6 +427,11 @@ private fun SwipeableArticleRow(
     }
 
     SwipeToDismissBox(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 8.dp, top = 3.dp, bottom = 3.dp)
+            .shadow(4.dp, CardShape)
+            .clip(CardShape),
         state = dismissState,
         backgroundContent = {
             val dir = dismissState.dismissDirection
@@ -721,6 +628,11 @@ private fun DateFilterChips(
     }
 }
 
+/**
+ * A feed as a card: round site icon, name, newest article as a preview line,
+ * its time and an unread dot, and the read ↔ unread button where BlurtText
+ * has its pin.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FeedHeaderRow(
@@ -729,57 +641,74 @@ private fun FeedHeaderRow(
     /** All read ↔ all unread (also on long-press). */
     onToggleRead: () -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val hasUnread = row.unread > 0
     Row(
         Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onToggleRead,
-            )
-            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .shadow(8.dp, CardShape)
+            .clip(CardShape)
+            .background(scheme.card())
+            .combinedClickable(onClick = onClick, onLongClick = onToggleRead)
+            .padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            if (row.collapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.width(6.dp))
-        FeedIcon(title = row.category, iconUrl = row.iconUrl)
-        Spacer(Modifier.width(10.dp))
-        Text(
-            text = row.category,
-            modifier = Modifier.weight(1f),
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = "${row.unread}",
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.labelLarge,
-        )
-        Text(
-            text = " ·${row.shown}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelMedium,
-        )
-        IconButton(onClick = onToggleRead, modifier = Modifier.size(40.dp)) {
-            if (row.unread > 0) {
-                Icon(Icons.Default.DoneAll, contentDescription = "Mark feed read")
-            } else {
-                Icon(
-                    Icons.Default.MarkEmailUnread,
-                    contentDescription = "Mark feed unread",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        FeedIcon(title = row.category, iconUrl = row.iconUrl, size = 44.dp)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = row.category,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = scheme.ink(),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
+                if (row.latestEpoch > 0) {
+                    Text(
+                        formatShortTime(row.latestEpoch),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                if (hasUnread) UnreadDot(Modifier.padding(start = 6.dp))
             }
+            val preview = row.latestTitle.ifBlank { "No articles loaded" }
+            Text(
+                text = preview,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (hasUnread) FontWeight.Medium else FontWeight.Normal,
+                color = if (hasUnread) scheme.ink() else scheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Text(
+                text = buildString {
+                    if (hasUnread) append("${row.unread} unread · ")
+                    append("${row.shown} shown")
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = if (hasUnread) scheme.primary else scheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        IconButton(onClick = onToggleRead, modifier = Modifier.size(40.dp)) {
+            Icon(
+                if (hasUnread) Icons.Default.DoneAll else Icons.Default.MarkEmailUnread,
+                contentDescription = if (hasUnread) "Mark feed read" else "Mark feed unread",
+                tint = scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
 
+/** Day heading inside an open feed, like BlurtText's "Unread" / "Read" headings. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DateHeaderRow(
@@ -788,52 +717,40 @@ private fun DateHeaderRow(
     /** Long-press: the day's articles all read ↔ all unread. */
     onLongClick: () -> Unit,
 ) {
+    val scheme = MaterialTheme.colorScheme
     Row(
         Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(start = 28.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = 28.dp, end = 16.dp, top = 10.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            if (row.collapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.height(18.dp),
-        )
-        Spacer(Modifier.width(6.dp))
         Text(
             text = row.dateLabel,
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            color = scheme.ink(),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (row.unread > 0) {
-            Text(
-                text = "${row.unread}",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "/${row.shown}",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall,
-            )
-        } else {
-            Text(
-                text = "${row.shown}",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
+        Text(
+            text = if (row.unread > 0) "${row.unread} / ${row.shown}" else "${row.shown}",
+            color = if (row.unread > 0) scheme.primary else scheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelMedium,
+        )
+        Icon(
+            if (row.collapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+            contentDescription = if (row.collapsed) "Show day" else "Hide day",
+            tint = scheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(start = 4.dp)
+                .size(18.dp),
+        )
     }
 }
 
+/** One article as a card: title, time and unread dot, preview, star. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ArticleRow(
@@ -842,80 +759,234 @@ private fun ArticleRow(
     onClick: () -> Unit,
     onToggleStar: () -> Unit,
 ) {
-    val bg = when {
-        selected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        else -> MaterialTheme.colorScheme.surface
-    }
+    val scheme = MaterialTheme.colorScheme
+    val bg = if (selected) scheme.primaryContainer else scheme.card()
     Row(
         Modifier
             .fillMaxWidth()
             .background(bg)
             .combinedClickable(onClick = onClick, onLongClick = onToggleStar)
-            .padding(start = 36.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.Top,
+            .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(
-                text = article.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (article.isRead) FontWeight.Normal else FontWeight.SemiBold,
-                color = if (article.isRead) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (article.isVideo) {
+            Row(verticalAlignment = Alignment.Top) {
+                Text(
+                    text = article.title,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (article.isRead) FontWeight.Normal else FontWeight.SemiBold,
+                    color = if (article.isRead) scheme.onSurfaceVariant else scheme.ink(),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    formatShortTime(article.createdOnTime),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+                )
+                if (!article.isRead) UnreadDot(Modifier.padding(start = 6.dp, top = 7.dp))
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 2.dp),
+            ) {
+                if (article.isVideo || article.isAudio) {
                     Icon(
-                        Icons.Default.Videocam,
-                        contentDescription = "Video",
+                        if (article.isVideo) Icons.Default.Videocam else Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = if (article.isVideo) "Video" else "Audio",
                         modifier = Modifier
-                            .height(14.dp)
-                            .padding(end = 4.dp),
-                        tint = MaterialTheme.colorScheme.secondary,
-                    )
-                } else if (article.isAudio) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = "Audio",
-                        modifier = Modifier
-                            .height(14.dp)
-                            .padding(end = 4.dp),
-                        tint = MaterialTheme.colorScheme.secondary,
+                            .padding(end = 4.dp)
+                            .size(16.dp),
+                        tint = scheme.secondary,
                     )
                 }
-                Text(
-                    text = formatTime(article.createdOnTime),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 if (article.summary.isNotBlank()) {
                     Text(
-                        text = " · ${article.summary}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        text = article.summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
                     )
                 }
             }
         }
-        IconButton(onClick = onToggleStar) {
+        IconButton(onClick = onToggleStar, modifier = Modifier.size(40.dp)) {
             Icon(
                 if (article.isSaved) Icons.Default.Star else Icons.Default.StarBorder,
-                contentDescription = "Star",
-                tint = if (article.isSaved) {
-                    MaterialTheme.colorScheme.secondary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                contentDescription = if (article.isSaved) "Unstar" else "Star",
+                tint = if (article.isSaved) scheme.secondary else scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun UnreadDot(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(8.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary),
+    )
+}
+
+/** Pill search field at the top, like BlurtText's "Search messages". */
+@Composable
+private fun SearchPill(
+    query: String,
+    onQuery: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val focus = LocalFocusManager.current
+    Surface(
+        shape = PillShape,
+        color = scheme.searchPill(),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp),
+    ) {
+        Row(
+            Modifier.padding(start = 16.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Search, contentDescription = null, tint = scheme.onSurfaceVariant)
+            Box(
+                Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (query.isEmpty()) {
+                    Text(
+                        "Search articles",
+                        color = scheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                    )
+                }
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQuery,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = scheme.ink()),
+                    cursorBrush = SolidColor(scheme.primary),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (query.isNotEmpty()) {
+                IconButton(onClick = {
+                    onQuery("")
+                    focus.clearFocus()
+                }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear search", tint = scheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Footer like BlurtText's: unread count and status on the left, actions on
+ * the right (Filters, collapse/expand, Tailscale, refresh, settings).
+ */
+@Composable
+private fun HomeFooter(
+    state: HomeUiState,
+    onFilters: () -> Unit,
+    onCollapseExpand: () -> Unit,
+    onRefresh: () -> Unit,
+    onSettings: () -> Unit,
+    onTailscaleConnected: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        Modifier
+            .background(scheme.canvas())
+            .navigationBarsPadding(),
+    ) {
+        HorizontalDivider(color = scheme.outlineVariant)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (state.unread > 0) "${state.unread} unread" else "All read",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = scheme.ink(),
+                    maxLines = 1,
+                )
+                val caption = buildString {
+                    if (state.loading) {
+                        append("Updating…")
+                    } else if (state.lastUpdatedEpochMs > 0) {
+                        append("Updated ${formatLastUpdated(state.lastUpdatedEpochMs)}")
+                    }
+                    if (state.isOffline) append(" · offline")
+                    if (state.dateFilter != DateFilter.ALL) append(" · ${state.dateFilter.label}")
+                }
+                if (caption.isNotBlank()) {
+                    Text(
+                        caption,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (state.isOffline) scheme.error else scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            IconButton(onClick = onFilters) {
+                Icon(
+                    Icons.Default.FilterAlt,
+                    contentDescription = if (state.filtersExpanded) "Hide filters" else "Filters",
+                    tint = if (state.filtersExpanded || state.dateFilter != DateFilter.ALL) {
+                        scheme.primary
+                    } else {
+                        scheme.ink()
+                    },
+                )
+            }
+            IconButton(onClick = onCollapseExpand) {
+                Icon(
+                    if (state.collapsed.isEmpty()) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore,
+                    contentDescription = if (state.collapsed.isEmpty()) "Collapse all" else "Expand all",
+                    tint = scheme.ink(),
+                )
+            }
+            if (state.showTailscaleButton) {
+                TailscaleButton(onConnected = onTailscaleConnected)
+            }
+            IconButton(onClick = onRefresh) {
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = scheme.ink())
+            }
+            IconButton(onClick = onSettings) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = scheme.ink())
+            }
+        }
+    }
+}
+
+/** Time today, "Yesterday", or a short date — like a message list. */
+private fun formatShortTime(epoch: Long): String {
+    if (epoch <= 0) return ""
+    val key = dateKeyForEpoch(epoch)
+    val today = dateKeyForEpoch(System.currentTimeMillis() / 1000)
+    val yesterday = dateKeyForEpoch(System.currentTimeMillis() / 1000 - 86_400)
+    val date = Date(epoch * 1000)
+    return when (key) {
+        today -> java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(date)
+        yesterday -> "Yesterday"
+        else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(date)
     }
 }
 
@@ -985,7 +1056,7 @@ private fun TailscaleButton(onConnected: () -> Unit) {
             tint = if (vpnActive) {
                 MaterialTheme.colorScheme.primary
             } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
+                MaterialTheme.colorScheme.ink()
             },
         )
     }
@@ -993,18 +1064,21 @@ private fun TailscaleButton(onConnected: () -> Unit) {
 
 /** Site icon from the FreshRSS server, or a letter badge when there is none. */
 @Composable
-private fun FeedIcon(title: String, iconUrl: String) {
+private fun FeedIcon(title: String, iconUrl: String, size: Dp = 22.dp) {
     var failed by remember(iconUrl) { mutableStateOf(false) }
     val mod = Modifier
-        .size(22.dp)
-        .clip(RoundedCornerShape(5.dp))
+        .size(size)
+        .clip(CircleShape)
     if (iconUrl.isNotBlank() && !failed) {
-        AsyncImage(
-            model = iconUrl,
-            contentDescription = null,
-            onError = { failed = true },
-            modifier = mod,
-        )
+        // Favicons are small and often transparent: center them on a light disc.
+        Box(mod.background(Color.White), contentAlignment = Alignment.Center) {
+            AsyncImage(
+                model = iconUrl,
+                contentDescription = null,
+                onError = { failed = true },
+                modifier = Modifier.size(size * 0.62f),
+            )
+        }
     } else {
         Box(
             mod.background(MaterialTheme.colorScheme.primaryContainer),
@@ -1012,7 +1086,7 @@ private fun FeedIcon(title: String, iconUrl: String) {
         ) {
             Text(
                 text = title.trim().firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "•",
-                style = MaterialTheme.typography.labelMedium,
+                style = if (size >= 36.dp) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
