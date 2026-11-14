@@ -47,10 +47,17 @@ The left side shows the unread count and when the list last updated (or "Connect
 
 The list reloads by itself once Tailscale connects.
 
-## Tailscale on mobile data
+## Tailscale when needed
 
-With **Settings → Tailscale → Use Tailscale on mobile data** on (default), refreshing or marking
-articles off Wi-Fi connects Tailscale first, waits for it (up to 15 s), and disconnects about
+With **Settings → Tailscale → Connect Tailscale when needed** on (default), refreshing or marking
+articles connects Tailscale first when the server can't be reached directly:
+
+- On mobile data, always.
+- On Wi-Fi, when a quick test connection to the server's address fails (up to 2 s). At home it
+  answers at once and Tailscale stays off; on any other Wi-Fi it doesn't, so Tailscale connects.
+  A failed test is remembered for that network for 10 minutes.
+
+It waits for Tailscale (up to 15 s), and disconnects about
 5 seconds after the last server call, or at once when you switch to another app. If Android
 closes the app first, a system alarm still disconnects Tailscale within a minute or two.
 If you connected Tailscale yourself, it is left alone.
@@ -58,7 +65,7 @@ If you connected Tailscale yourself, it is left alone.
 ## Settings
 
 The ⚙ button opens a sheet over the list. **Test** shows its result in green (OK) or red
-(failed), and on mobile data it connects Tailscale first like a refresh does. Drag its handle to resize it (half ↔ full height) or
+(failed), and when the server is out of reach it connects Tailscale first like a refresh does. Drag its handle to resize it (half ↔ full height) or
 down to close. Swipe sideways between tabs; **Test** and **Save** stay at the top.
 
 | Tab | Settings |
@@ -66,7 +73,7 @@ down to close. Swipe sideways between tabs; **Test** and **Save** stay at the to
 | Server | URL, user, API password, allow insecure HTTP |
 | Reading | History days, download limits, open Filters on start |
 | Look | Theme, colors, where the scope chips and filters sit |
-| Tailscale | Show the button, use Tailscale on mobile data |
+| Tailscale | Show the button, connect Tailscale when needed |
 
 ## Appearance
 

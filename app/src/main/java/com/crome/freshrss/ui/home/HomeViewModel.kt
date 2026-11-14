@@ -86,7 +86,7 @@ data class HomeUiState(
     val webPageFeeds: Set<String> = emptySet(),
     /** Articles the user switched to (or away from) the web page view this session. */
     val webPageToggled: Map<String, Boolean> = emptyMap(),
-    /** Waiting for Tailscale to come up before a refresh on mobile data. */
+    /** Waiting for Tailscale to come up before a refresh (server out of reach). */
     val tailscaleConnecting: Boolean = false,
     /** Web page view per article id; kept only while the app runs. */
     val pages: Map<String, PageState> = emptyMap(),

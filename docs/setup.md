@@ -25,12 +25,12 @@ LAN or VPN you trust. The API password is stored in Android's Keystore-backed en
 ## Tailscale
 
 If your server is only reachable over Tailscale, the 🔑 button in the footer connects
-and disconnects it, and on mobile data the app connects it by itself for each refresh
-(Settings → Tailscale).
+and disconnects it, and when the server is out of reach (mobile data, or Wi-Fi away from
+home) the app connects it by itself for each refresh (Settings → Tailscale).
 
 - Tailscale must be installed and logged in, and you must have accepted its VPN prompt
   once. If not, Tailscale opens its own screen to finish.
-- Hide the button or turn off the mobile-data behavior under **Settings → Tailscale**.
+- Hide the button or turn off the automatic connect under **Settings → Tailscale**.
 
 ## Widget
 

@@ -13,7 +13,7 @@ class FreshRssApp : Application() {
     lateinit var client: FreshRssClient
         private set
 
-    /** Tailscale on mobile data, shared by the list and Settings. */
+    /** Tailscale when the server is out of reach, shared by the list and Settings. */
     lateinit var tailscale: AutoTailscale
         private set
 
@@ -22,10 +22,10 @@ class FreshRssApp : Application() {
         settings = SettingsRepository(this)
         // Move any pre-0.6.4 plaintext API password into EncryptedSharedPreferences.
         settings.migrateSecretsBlocking()
-        tailscale = AutoTailscale(this, settings)
         client = FreshRssClientImpl(
             authTokenStore = EncryptedAuthTokenStore(this),
         )
+        tailscale = AutoTailscale(this, settings) { client.config.baseUrl }
     }
 }
 

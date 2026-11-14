@@ -20,13 +20,16 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Tailscale for server calls on mobile data. One per app, shared by the list
- * (refresh, mark, star) and Settings (Test).
+ * Tailscale for server calls when the server is out of reach. One per app,
+ * shared by the list (refresh, mark, star) and Settings (Test).
  *
- * When the phone is on mobile data (not Wi-Fi/Ethernet), the setting is on,
- * Tailscale is installed, and the VPN is down, [run] connects Tailscale and
- * waits for it before the call. Only a connection this class made is ever
- * disconnected, and it is disconnected:
+ * When the setting is on, Tailscale is installed, the VPN is down, and the
+ * server can't be reached directly, [run] connects Tailscale and waits for it
+ * before the call. "Can't be reached" means: on mobile data, always; on Wi-Fi
+ * or anything else, a quick TCP connect to the server's host and port
+ * ([ServerProbe]) fails, so home Wi-Fi stays direct while any other Wi-Fi
+ * uses Tailscale. Only a connection this class made is ever disconnected,
+ * and it is disconnected:
  *
  * - [LINGER_MS] after the last server call (quick marks share one connection),
  * - at once when the app goes to the background ([onAppBackground]), or as
@@ -37,6 +40,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 class AutoTailscale(
     context: Context,
     private val settings: SettingsRepository,
+    /** The URL calls are about to use (the client's current config). */
+    private val serverUrl: () -> String,
 ) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -47,6 +52,11 @@ class AutoTailscale(
     private var inBackground = false
     private var disconnectJob: Job? = null
     private val alarms = appContext.getSystemService(AlarmManager::class.java)
+
+    // Last failed probe: skip re-probing (and its timeout) on the same network
+    // and URL for a while, so marks after the linger don't each wait again.
+    private var unreachableKey: String? = null
+    private var unreachableAt = 0L
 
     private val _connecting = MutableStateFlow(false)
 
@@ -108,12 +118,25 @@ class AutoTailscale(
         alarms?.cancel(Tailscale.disconnectPendingIntent(appContext))
     }
 
-    /** True when [run] would connect Tailscale right now. */
-    suspend fun willConnect(): Boolean =
-        !Tailscale.isVpnActive(appContext) &&
-            settings.autoTailscale.first() &&
-            Tailscale.isInstalled(appContext) &&
-            Tailscale.isOnMobileData(appContext)
+    /** True when [run] would connect Tailscale right now. May probe the server (up to ~2 s). */
+    suspend fun willConnect(): Boolean {
+        if (Tailscale.isVpnActive(appContext)) return false
+        if (!settings.autoTailscale.first() || !Tailscale.isInstalled(appContext)) return false
+        val network = Tailscale.activeNetwork(appContext) ?: return false
+        if (Tailscale.isOnMobileData(appContext)) return true
+        val url = serverUrl().ifBlank { settings.config.first().baseUrl }
+        if (url.isBlank()) return false
+        val key = "$network|$url"
+        val now = SystemClock.elapsedRealtime()
+        if (key == unreachableKey && now - unreachableAt < UNREACHABLE_CACHE_MS) return true
+        if (ServerProbe.reachable(network, url)) {
+            unreachableKey = null
+            return false
+        }
+        unreachableKey = key
+        unreachableAt = now
+        return true
+    }
 
     private suspend fun connectIfNeeded() {
         if (!willConnect()) return
@@ -141,5 +164,8 @@ class AutoTailscale(
 
         /** Backstop alarm if the app is killed before it can disconnect. */
         private const val FAILSAFE_MS = 60_000L
+
+        /** How long a failed probe on one network is trusted. */
+        private const val UNREACHABLE_CACHE_MS = 10 * 60_000L
     }
 }

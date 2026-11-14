@@ -36,7 +36,7 @@ data class SettingsUiState(
     val allowCleartextHttp: Boolean = false,
     /** Show Tailscale shortcut in the title bar. */
     val showTailscaleButton: Boolean = true,
-    /** On mobile data, connect Tailscale for each refresh and disconnect after. */
+    /** When the server is out of reach, connect Tailscale for each refresh and disconnect after. */
     val autoTailscale: Boolean = true,
     /** System / Light / Dark */
     val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
@@ -195,7 +195,7 @@ class SettingsViewModel(
                 }
                 return@launch
             }
-            // Off Wi-Fi, connect Tailscale for the test like a refresh does.
+            // Server out of reach (mobile data, other Wi-Fi): connect Tailscale like a refresh does.
             if (tailscale.willConnect()) {
                 _state.update { it.copy(testResult = "Connecting Tailscale…") }
             }

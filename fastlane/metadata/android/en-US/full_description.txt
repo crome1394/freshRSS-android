@@ -19,7 +19,7 @@
 <p><b>Tailscale</b></p>
 <ul>
 <li>A key button connects and disconnects the Tailscale VPN</li>
-<li>On mobile data, a refresh can connect Tailscale, update, and disconnect again by itself</li>
+<li>Away from home (mobile data or another Wi-Fi), a refresh can connect Tailscale, update, and disconnect again by itself</li>
 </ul>
 
 <p><b>Look</b></p>

@@ -45,6 +45,10 @@ object Tailscale {
         }
     }
 
+    /** The phone's default network, or null when offline. */
+    fun activeNetwork(context: Context): Network? =
+        context.getSystemService(ConnectivityManager::class.java)?.activeNetwork
+
     /**
      * True when the phone is online over mobile data and not Wi-Fi or Ethernet
      * (checked before any VPN is up, so the active network is the real one).

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Tailscale connects on any network where the server is out of reach**, not only on mobile data: on Wi-Fi the app first tries the server directly (up to 2 s), so home Wi-Fi stays direct and other Wi-Fi uses Tailscale. Setting renamed to **Connect Tailscale when needed**
+
 ## 0.8.1
 
 - **Source filter**: Filters → Source shows only YouTube, Reddit, GitHub, Mastodon, Rumble, Odysee, Substack, Medium, or plain websites, with feed counts
