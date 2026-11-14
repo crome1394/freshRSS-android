@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.2
 
 - **Tailscale connects on any network where the server is out of reach**, not only on mobile data: on Wi-Fi the app first tries the server directly (up to 2 s), so home Wi-Fi stays direct and other Wi-Fi uses Tailscale. Setting renamed to **Connect Tailscale when needed**
 

@@ -1,0 +1,1 @@
+Tailscale now connects on any network where the server can't be reached directly (Wi-Fi away from home too), not only on mobile data. Setting renamed to Connect Tailscale when needed.
