@@ -51,17 +51,21 @@ Keep a backup of the keystore. Phones only accept updates signed with the same k
 
 ## Making a release
 
-1. Bump `versionCode` and `versionName` in `app/build.gradle.kts`; add a `CHANGELOG.md` entry.
-2. Build the signed release (above) and check it:
+1. Bump `versionCode` and `versionName` in `app/build.gradle.kts`; add a `CHANGELOG.md` entry
+   and `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` (F-Droid's changelog).
+2. Commit and tag **before** building. The APK records the commit it was built from, so an APK
+   built from uncommitted changes won't match F-Droid's rebuild of the tag.
+3. Build the signed release from the clean tree (above, with `clean`) and check it:
    `apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk`
-3. Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` (F-Droid's changelog).
-4. Tag and publish with the APK attached:
+4. Push and publish with the APK attached:
 
 ```bash
-cp app/build/outputs/apk/release/app-release.apk FreshRSS-Android-0.8.0.apk
-git tag v0.8.0 && git push origin main v0.8.0
-gh release create v0.8.0 FreshRSS-Android-0.8.0.apk --title "0.8.0" --notes-file notes.md
+git commit -am "0.8.2: …" && git tag v0.8.2
+./gradlew clean :app:assembleRelease
+cp app/build/outputs/apk/release/app-release.apk FreshRSS-Android-0.8.2.apk
+git push origin main v0.8.2
+gh release create v0.8.2 FreshRSS-Android-0.8.2.apk --title "0.8.2" --notes-file notes.md
 ```
 
-5. Check F-Droid would accept it: `sh scripts/verify-reproducible.sh v0.8.0 FreshRSS-Android-0.8.0.apk`
+5. Check F-Droid would accept it: `sh scripts/verify-reproducible.sh v0.8.2 FreshRSS-Android-0.8.2.apk`
    (see [F-DROID.md](../F-DROID.md)).

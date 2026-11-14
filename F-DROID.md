@@ -23,24 +23,25 @@ so they only appear for releases tagged after they were added.
 
 | | |
 |---|---|
-| Tag | `v<versionName>`, e.g. `v0.8.1` |
+| Tag | `v<versionName>`, e.g. `v0.8.2` |
 | Asset | `FreshRSS-Android-<versionName>.apk` |
 | Signing key | `~/.local/share/freshrss-android/freshrss-release.jks` (never change it) |
 | Cert SHA-256 | `953f79964111328b397d00fb2cd4188c63ff023e78cd6d9f4a33185015904837` |
 | Build | Gradle, `subdir: app`; no signing settings in F-Droid's build, so it is unsigned |
 
 Each release: bump `versionCode`/`versionName`, add `fastlane/.../changelogs/<versionCode>.txt`,
-build and sign (see [docs/building.md](docs/building.md)), publish the asset, then run:
+commit and tag, build and sign from that clean tag (see [docs/building.md](docs/building.md)),
+publish the asset, then run:
 
 ```bash
-sh scripts/verify-reproducible.sh v0.8.1 FreshRSS-Android-0.8.1.apk
+sh scripts/verify-reproducible.sh v0.8.2 FreshRSS-Android-0.8.2.apk
 ```
 
 ## Verified
 
-v0.8.1: the published APK with its signing block removed is byte-identical to an
+v0.8.2: the published APK with its signing block removed is byte-identical to an
 unsigned build of the tag from a fresh clone in another directory
-(`ff3047d5…736c`, OpenJDK 21, Gradle 8.11.1, AGP 8.7.3).
+(`54a83038…3b4d`, OpenJDK 21, Gradle 8.11.1, AGP 8.7.3). v0.8.1 was verified the same way.
 
 ## Submitting
 

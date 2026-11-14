@@ -23,26 +23,23 @@ Repo: https://github.com/crome1394/freshRSS-android.git
 Binaries: https://github.com/crome1394/freshRSS-android/releases/download/v%v/FreshRSS-Android-%v.apk
 
 Builds:
-  - versionName: 0.8.1
-    versionCode: 24
-    commit: c227422661223ed6f23ddc8f0f9967f8dc4cf5ba
+  - versionName: 0.8.2
+    versionCode: 25
+    commit: ecbcd2641723ac7d35325ee32ac7c4886f541672
     subdir: app
     gradle:
       - yes
-    # 0.8.1 still carries an old 0.7.3 APK under releases/ (removed after 0.8.1).
-    scandelete:
-      - releases
 
 AllowedAPKSigningKeys: 953f79964111328b397d00fb2cd4188c63ff023e78cd6d9f4a33185015904837
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
 UpdateCheckData: app/build.gradle.kts|versionCode\s*=\s*(\d+)|.|versionName\s*=\s*"([^"]+)"
-CurrentVersion: 0.8.1
-CurrentVersionCode: 24
+CurrentVersion: 0.8.2
+CurrentVersionCode: 25
 
 # Notes for the merge request (not part of the recipe):
-# - Verified: the published v0.8.1 APK with its signing block removed is
+# - Verified: the published v0.8.2 APK with its signing block removed is
 #   byte-identical to an unsigned build of the tag from a fresh clone in a
 #   different path (OpenJDK 21, Gradle 8.11.1, AGP 8.7.3). See F-DROID.md.
 # - No ads, analytics, crash reporting, Google Play Services, or non-free libraries.
